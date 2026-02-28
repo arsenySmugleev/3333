@@ -1,7 +1,7 @@
 from typing import List
 
 from src.models.appointment import Appointment
-from src.models.user import Base
+from src.models.base import Base
 import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, relationship, mapped_column
 

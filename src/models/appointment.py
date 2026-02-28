@@ -4,7 +4,7 @@ import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql.schema import ForeignKey
 from src.models.doctor import Doctor
-from src.models.user import Base
+from src.models.base import Base
 
 
 class Appointment(Base):

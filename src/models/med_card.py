@@ -1,7 +1,7 @@
 from typing import Optional
 
 from src.models.insurance import Insurance
-from src.models.user import Base
+from src.models.base import Base
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 

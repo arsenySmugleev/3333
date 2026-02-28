@@ -1,7 +1,7 @@
 from sqlalchemy.sql.schema import ForeignKey
 
 from src.models.med_card import MedCard
-from src.models.user import Base
+from src.models.base import Base
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
