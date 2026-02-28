@@ -1,5 +1,5 @@
 import sqlalchemy as sa
-from sqlalchemy.orm import DeclarativeMeta, Mapped, declarative_base, mapped_column, relationship
+from sqlalchemy.orm import DeclarativeMeta, Mapped, declarative_base, mapped_column
 
 from uuid import UUID, uuid4
 
