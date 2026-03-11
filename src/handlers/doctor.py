@@ -1,5 +1,3 @@
-from typing import Optional
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio.session import AsyncSession
@@ -23,6 +21,8 @@ async def get_doctor(
 ):
     result = await session.execute(select(DoctorModel).where(DoctorModel.id == id))
     doctor = result.scalar_one_or_none()
+    if not doctor:
+        raise HTTPException(status_code=404, detail="Doctor not found")
     return doctor
 
 
@@ -41,7 +41,7 @@ async def create_doctor(
 @router.patch("/{id}", response_model=Doctor)
 async def update_doctor(
         id: int,
-        doctor_data: Optional[DoctorUpdate],
+        doctor_data: DoctorUpdate,
         session: AsyncSession = Depends(get_db_session)
 ):
     result = await session.execute(select(DoctorModel).where(DoctorModel.id == id))
@@ -54,3 +54,18 @@ async def update_doctor(
     await session.commit()
     await session.refresh(db_doctor)
     return db_doctor
+
+
+@router.delete("/{id}", status_code=204)
+async def delete_doctor(
+        id: int,
+        session: AsyncSession = Depends(get_db_session)
+):
+    result = await session.execute(select(DoctorModel).where(DoctorModel.id == id))
+    db_doctor = result.scalar_one_or_none()
+    if not db_doctor:
+        raise HTTPException(status_code=404, detail="Doctor not found")
+
+    await session.delete(db_doctor)
+    await session.commit()
+    return f"Doctor with id{DoctorModel.id} delete"
