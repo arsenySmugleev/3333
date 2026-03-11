@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.responses import UJSONResponse
 from starlette.middleware.cors import CORSMiddleware
 from src.healthcheck.router import router
+from src.handlers.doctor import router as doctor
 
 
 def get_app() -> FastAPI:
@@ -20,5 +21,6 @@ def get_app() -> FastAPI:
         allow_headers=['*'],
     )
     app.include_router(router)
+    app.include_router(doctor)
 
     return app
