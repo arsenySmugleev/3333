@@ -31,11 +31,11 @@ async def create_doctor(
         doctor_data: DoctorCreate,
         session: AsyncSession = Depends(get_db_session)
 ):
-    db_doctor = DoctorModel(**doctor_data.model_dump())
-    session.add(db_doctor)
+    doctor_db = DoctorModel(**doctor_data.model_dump())
+    session.add(doctor_db)
     await session.commit()
-    await session.refresh(db_doctor)
-    return db_doctor
+    await session.refresh(doctor_db)
+    return doctor_db
 
 
 @router.patch("/{id}", response_model=Doctor)
@@ -45,15 +45,15 @@ async def update_doctor(
         session: AsyncSession = Depends(get_db_session)
 ):
     result = await session.execute(select(DoctorModel).where(DoctorModel.id == id))
-    db_doctor = result.scalar_one_or_none()
-    if not db_doctor:
+    doctor_db = result.scalar_one_or_none()
+    if not doctor_db:
         raise HTTPException(status_code=404, detail="Doctor not found")
     updated_doctor_data = doctor_data.model_dump(exclude_unset=True)
     for key, value in updated_doctor_data.items():
-        setattr(db_doctor, key, value)
+        setattr(doctor_db, key, value)
     await session.commit()
-    await session.refresh(db_doctor)
-    return db_doctor
+    await session.refresh(doctor_db)
+    return doctor_db
 
 
 @router.delete("/{id}", status_code=204)
@@ -62,10 +62,10 @@ async def delete_doctor(
         session: AsyncSession = Depends(get_db_session)
 ):
     result = await session.execute(select(DoctorModel).where(DoctorModel.id == id))
-    db_doctor = result.scalar_one_or_none()
-    if not db_doctor:
+    doctor_db = result.scalar_one_or_none()
+    if not doctor_db:
         raise HTTPException(status_code=404, detail="Doctor not found")
 
-    await session.delete(db_doctor)
+    await session.delete(doctor_db)
     await session.commit()
-    return f"Doctor with id{DoctorModel.id} delete"
+    return None
