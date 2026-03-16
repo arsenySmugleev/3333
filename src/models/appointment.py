@@ -14,7 +14,7 @@ class Appointment(Base):
     __tablename__ = "appointments"
     id: Mapped[int] = mapped_column(primary_key=True)
     doc_id: Mapped[int] = mapped_column(ForeignKey("doctors.id"))
-    time_start: Mapped[datetime] = mapped_column(sa.DateTime())
+    time_start: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True))
     name: Mapped[str] = mapped_column(sa.String())
 
     doctor: Mapped["Doctor"] = relationship(back_populates="appointment")
