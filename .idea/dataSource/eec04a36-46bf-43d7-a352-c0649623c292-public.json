@@ -1,0 +1,178 @@
+{
+  "name" : "public",
+  "VIEWS" : [ ],
+  "FUNCTIONS" : [ ],
+  "SEQUENCES" : [ ],
+  "TABLES" : [ {
+    "TABLE_NAME" : "alembic_version",
+    "IS_TEMPORARY" : "N"
+  }, {
+    "TABLE_NAME" : "users",
+    "IS_TEMPORARY" : "N"
+  } ],
+  "DATASET_COLUMNS" : [ {
+    "COLUMN_NAME" : "version_num",
+    "POSITION" : 1,
+    "DATA_TYPE_NAME" : "character varying",
+    "DECL_TYPE_OWNER" : null,
+    "DECL_TYPE_PROGRAM" : null,
+    "DECL_TYPE_NAME" : null,
+    "DATA_LENGTH" : 32,
+    "DATA_PRECISION" : null,
+    "DATA_SCALE" : null,
+    "IS_SET" : "N",
+    "IS_NULLABLE" : "N",
+    "IS_HIDDEN" : "N",
+    "IS_PRIMARY_KEY" : "Y",
+    "IS_FOREIGN_KEY" : "N",
+    "IS_UNIQUE_KEY" : "N",
+    "IS_IDENTITY" : "N"
+  } ],
+  "ALL_CONSTRAINTS" : [ {
+    "DATASET_NAME" : "alembic_version",
+    "CONSTRAINT_NAME" : "2200_16384_1_not_null",
+    "CONSTRAINT_TYPE" : "CHECK",
+    "FK_CONSTRAINT_OWNER" : null,
+    "FK_CONSTRAINT_NAME" : null,
+    "IS_ENABLED" : "Y",
+    "CHECK_CONDITION" : "version_num IS NOT NULL"
+  }, {
+    "DATASET_NAME" : "alembic_version",
+    "CONSTRAINT_NAME" : "alembic_version_pkc",
+    "CONSTRAINT_TYPE" : "PRIMARY KEY",
+    "FK_CONSTRAINT_OWNER" : null,
+    "FK_CONSTRAINT_NAME" : null,
+    "IS_ENABLED" : "Y",
+    "CHECK_CONDITION" : null
+  }, {
+    "DATASET_NAME" : "users",
+    "CONSTRAINT_NAME" : "2200_16389_1_not_null",
+    "CONSTRAINT_TYPE" : "CHECK",
+    "FK_CONSTRAINT_OWNER" : null,
+    "FK_CONSTRAINT_NAME" : null,
+    "IS_ENABLED" : "Y",
+    "CHECK_CONDITION" : "id IS NOT NULL"
+  }, {
+    "DATASET_NAME" : "users",
+    "CONSTRAINT_NAME" : "2200_16389_2_not_null",
+    "CONSTRAINT_TYPE" : "CHECK",
+    "FK_CONSTRAINT_OWNER" : null,
+    "FK_CONSTRAINT_NAME" : null,
+    "IS_ENABLED" : "Y",
+    "CHECK_CONDITION" : "username IS NOT NULL"
+  }, {
+    "DATASET_NAME" : "users",
+    "CONSTRAINT_NAME" : "users_pkey",
+    "CONSTRAINT_TYPE" : "PRIMARY KEY",
+    "FK_CONSTRAINT_OWNER" : null,
+    "FK_CONSTRAINT_NAME" : null,
+    "IS_ENABLED" : "Y",
+    "CHECK_CONDITION" : null
+  } ],
+  "DATASET_CONSTRAINTS" : [ {
+    "DATASET_NAME" : "alembic_version",
+    "CONSTRAINT_NAME" : "2200_16384_1_not_null",
+    "CONSTRAINT_TYPE" : "CHECK",
+    "FK_CONSTRAINT_OWNER" : null,
+    "FK_CONSTRAINT_NAME" : null,
+    "IS_ENABLED" : "Y",
+    "CHECK_CONDITION" : "version_num IS NOT NULL"
+  }, {
+    "DATASET_NAME" : "alembic_version",
+    "CONSTRAINT_NAME" : "alembic_version_pkc",
+    "CONSTRAINT_TYPE" : "PRIMARY KEY",
+    "FK_CONSTRAINT_OWNER" : null,
+    "FK_CONSTRAINT_NAME" : null,
+    "IS_ENABLED" : "Y",
+    "CHECK_CONDITION" : null
+  } ],
+  "DATASET_INDEXES" : [ {
+    "INDEX_NAME" : "alembic_version_pkc",
+    "IS_UNIQUE" : "Y",
+    "IS_VALID" : "Y"
+  } ],
+  "ALL_COLUMNS" : [ {
+    "COLUMN_NAME" : "version_num",
+    "DATASET_NAME" : "alembic_version",
+    "POSITION" : 1,
+    "DATA_TYPE_NAME" : "character varying",
+    "DECL_TYPE_OWNER" : null,
+    "DECL_TYPE_PROGRAM" : null,
+    "DECL_TYPE_NAME" : null,
+    "DATA_LENGTH" : 32,
+    "DATA_PRECISION" : null,
+    "DATA_SCALE" : null,
+    "IS_SET" : "N",
+    "IS_NULLABLE" : "N",
+    "IS_HIDDEN" : "N",
+    "IS_PRIMARY_KEY" : "Y",
+    "IS_FOREIGN_KEY" : "N",
+    "IS_UNIQUE_KEY" : "N",
+    "IS_IDENTITY" : "N"
+  }, {
+    "COLUMN_NAME" : "id",
+    "DATASET_NAME" : "users",
+    "POSITION" : 1,
+    "DATA_TYPE_NAME" : "uuid",
+    "DECL_TYPE_OWNER" : null,
+    "DECL_TYPE_PROGRAM" : null,
+    "DECL_TYPE_NAME" : null,
+    "DATA_LENGTH" : null,
+    "DATA_PRECISION" : null,
+    "DATA_SCALE" : null,
+    "IS_SET" : "N",
+    "IS_NULLABLE" : "N",
+    "IS_HIDDEN" : "N",
+    "IS_PRIMARY_KEY" : "Y",
+    "IS_FOREIGN_KEY" : "N",
+    "IS_UNIQUE_KEY" : "N",
+    "IS_IDENTITY" : "N"
+  }, {
+    "COLUMN_NAME" : "username",
+    "DATASET_NAME" : "users",
+    "POSITION" : 2,
+    "DATA_TYPE_NAME" : "character varying",
+    "DECL_TYPE_OWNER" : null,
+    "DECL_TYPE_PROGRAM" : null,
+    "DECL_TYPE_NAME" : null,
+    "DATA_LENGTH" : null,
+    "DATA_PRECISION" : null,
+    "DATA_SCALE" : null,
+    "IS_SET" : "N",
+    "IS_NULLABLE" : "N",
+    "IS_HIDDEN" : "N",
+    "IS_PRIMARY_KEY" : "N",
+    "IS_FOREIGN_KEY" : "N",
+    "IS_UNIQUE_KEY" : "N",
+    "IS_IDENTITY" : "N"
+  } ],
+  "ALL_INDEXES" : [ {
+    "INDEX_NAME" : "alembic_version_pkc",
+    "TABLE_NAME" : "alembic_version",
+    "IS_UNIQUE" : "Y",
+    "IS_VALID" : "Y"
+  }, {
+    "INDEX_NAME" : "users_pkey",
+    "TABLE_NAME" : "users",
+    "IS_UNIQUE" : "Y",
+    "IS_VALID" : "Y"
+  } ],
+  "DATASET_TRIGGERS" : [ ],
+  "ALL_DATASET_TRIGGERS" : [ ],
+  "DATASET_CONSTRAINT_COLUMNS" : [ {
+    "COLUMN_NAME" : "id",
+    "CONSTRAINT_NAME" : "users_pkey",
+    "POSITION" : 1
+  } ],
+  "ALL_CONSTRAINT_COLUMNS" : [ {
+    "DATASET_NAME" : "alembic_version",
+    "COLUMN_NAME" : "version_num",
+    "CONSTRAINT_NAME" : "alembic_version_pkc",
+    "POSITION" : 1
+  }, {
+    "DATASET_NAME" : "users",
+    "COLUMN_NAME" : "id",
+    "CONSTRAINT_NAME" : "users_pkey",
+    "POSITION" : 1
+  } ]
+}
