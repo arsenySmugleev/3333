@@ -1,10 +1,14 @@
-from typing import List
-from src.models.associations import patient_med_service_association
+from typing import List, TYPE_CHECKING
+from src.models.association import patient_med_service_association
 
 import sqlalchemy as sa
-from src.models.patient import Patient
+
 from src.models.base import Base
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+
+if TYPE_CHECKING:
+    from src.models.patient import Patient
 
 
 class MedService(Base):
@@ -12,6 +16,6 @@ class MedService(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     service_name: Mapped[str] = mapped_column(sa.String())
 
-    patients: Mapped[List["Patient"]] = relationship(secondary=patient_med_service_association,
-                                                     backpopulates="med_service",
-                                                     ondelete="all, delete")
+    patient: Mapped[List["Patient"]] = relationship("Patient",
+                                                     secondary=patient_med_service_association,
+                                                     back_populates="med_service")
