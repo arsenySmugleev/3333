@@ -1,5 +1,5 @@
 from typing import List
-from src.models.associations import patient_med_service_association
+from src.models.association import patient_med_service_association
 import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -12,6 +12,6 @@ class Patient(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(sa.String())
 
-    med_service: Mapped[List["MedService"]] = relationship(secondary=patient_med_service_association,
-                                                           backpopulates="patient",
-                                                           cascade="all, delete")
+    med_service: Mapped[List["MedService"]] = relationship("MedService",
+                                                           secondary=patient_med_service_association,
+                                                           back_populates="patient")
