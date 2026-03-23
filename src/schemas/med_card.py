@@ -1,7 +1,10 @@
-from typing import Optional
+from __future__ import annotations
+from typing import Optional, TYPE_CHECKING
 from pydantic import BaseModel, ConfigDict
 
-from src.models.insurance import Insurance
+
+if TYPE_CHECKING:
+    from src.schemas.insurance import Insurance
 
 
 class MedCardBase(BaseModel):
@@ -18,5 +21,4 @@ class MedCardUpdate(BaseModel):
 
 class MedCard(MedCardBase):
     id: int
-    insurance: Optional["Insurance"] = None
     model_config = ConfigDict(from_attributes=True)
