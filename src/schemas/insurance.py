@@ -1,7 +1,6 @@
+from __future__ import annotations
 from typing import Optional
 from pydantic import BaseModel, ConfigDict
-
-from src.models.med_card import MedCard
 
 
 class InsuranceBase(BaseModel):
@@ -18,5 +17,4 @@ class InsuranceUpdate(BaseModel):
 
 class Insurance(InsuranceBase):
     id: int
-    med_card: Optional["MedCard"] = None
     model_config = ConfigDict(from_attributes=True)
