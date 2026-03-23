@@ -34,14 +34,14 @@ async def create_appointment(
         appointment_data: AppointmentCreate,
         session: AsyncSession = Depends(get_db_session)
 ):
-    db_appointment = AppointmentModel(**appointment_data.model_dump())
-    session.add(db_appointment)
+    appointment_db = AppointmentModel(**appointment_data.model_dump())
+    session.add(appointment_db)
     await session.commit()
-    stmt = (select(AppointmentModel).where(AppointmentModel.id == db_appointment.id)
+    stmt = (select(AppointmentModel).where(AppointmentModel.id == appointment_db.id)
             .options(selectinload(AppointmentModel.doctor)))
     result = await session.execute(stmt)
-    db_appointment = result.scalar_one_or_none()
-    return db_appointment
+    appointment_db = result.scalar_one_or_none()
+    return appointment_db
 
 
 @router.patch("/{id}", response_model=Appointment)
@@ -50,7 +50,8 @@ async def update_appointment(
         appointment_data: AppointmentUpdate,
         session: AsyncSession = Depends(get_db_session)
 ):
-    stmt = select(AppointmentModel).where(AppointmentModel.id == id).options(selectinload(AppointmentModel.doctor))
+    stmt = (select(AppointmentModel).where(AppointmentModel.id == id)
+            .options(selectinload(AppointmentModel.doctor)))
     result = await session.execute(stmt)
     appointment_db = result.scalar_one_or_none()
     if not appointment_db:
@@ -63,7 +64,7 @@ async def update_appointment(
     return appointment_db
 
 
-@router.delete("/{id}", response_model=Appointment)
+@router.delete("/{id}", status_code=204)
 async def delete_appointment(
         id: int,
         session: AsyncSession = Depends(get_db_session)
@@ -74,4 +75,4 @@ async def delete_appointment(
         raise HTTPException(status_code=404, detail="Appointment not found")
     await session.delete(appointment_db)
     await session.commit()
-    return appointment_db
+    return None
