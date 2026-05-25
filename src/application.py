@@ -1,12 +1,10 @@
 from fastapi import FastAPI
 from fastapi.responses import UJSONResponse
 from starlette.middleware.cors import CORSMiddleware
-from src.handlers.doctor import router as doctor
-from src.handlers.appointment import router as appointment
-from src.handlers.med_card import router as med_card
-from src.handlers.insurance import router as insurance
-from src.handlers.patient import router as patient
-from src.handlers.med_servise import router as med_servise
+from src.api.v1.doctor_appointment import router as doctor_appointment
+from src.api.v1.med_card_insurance import router as med_card_insurance
+from src.api.v1.patient_med_service import router as patient_med_service
+from errors_handlers import register_exception_handlers
 
 
 def get_app() -> FastAPI:
@@ -24,11 +22,9 @@ def get_app() -> FastAPI:
         allow_methods=['*'],
         allow_headers=['*'],
     )
-    app.include_router(doctor)
-    app.include_router(appointment)
-    app.include_router(patient)
-    app.include_router(med_servise)
-    app.include_router(med_card)
-    app.include_router(insurance)
+    app.include_router(doctor_appointment, prefix="/api/v1")
+    app.include_router(patient_med_service, prefix="/api/v1")
+    app.include_router(med_card_insurance, prefix="/api/v1")
 
+    register_exception_handlers(app)
     return app

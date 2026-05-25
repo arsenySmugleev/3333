@@ -10,5 +10,8 @@ class Doctor(Base):
     __tablename__ = "doctors"
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(sa.String())
+    specialty: Mapped[str] = mapped_column(sa.String())
 
-    appointment: Mapped[List["Appointment"]] = relationship(back_populates="doctor", cascade="all, delete-orphan")
+    appointment: Mapped[List["Appointment"]] = relationship(back_populates="doctor",
+                                                            lazy="selectin",
+                                                            cascade="all, delete-orphan")

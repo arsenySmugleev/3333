@@ -1,10 +1,10 @@
-from __future__ import annotations
 from typing import Optional
 from pydantic import BaseModel, ConfigDict
 
 
 class InsuranceBase(BaseModel):
     med_card_id: int
+    policy_number: int
 
 
 class InsuranceCreate(InsuranceBase):
@@ -12,7 +12,7 @@ class InsuranceCreate(InsuranceBase):
 
 
 class InsuranceUpdate(BaseModel):
-    med_card_id: Optional[int] = None
+    policy_number: Optional[int] = None
 
 
 class Insurance(InsuranceBase):

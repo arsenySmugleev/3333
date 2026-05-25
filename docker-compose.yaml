@@ -7,3 +7,18 @@ services:
       POSTGRES_PASSWORD: 123456
     ports:
       - "5432:5432"
+    networks:
+      - app-network
+
+  adminer:
+    image: adminer
+    ports:
+      - "8080:8080"
+    networks:
+      - app-network
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+
+networks:
+  app-network:
+    driver: bridge

@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 class Insurance(Base):
     __tablename__ = "insurances"
     id: Mapped[int] = mapped_column(primary_key=True)
-    med_card_id: Mapped[int] = mapped_column(ForeignKey("med_cards.id"))
+    med_card_id: Mapped[int] = mapped_column(ForeignKey("med_cards.id"), unique=True, nullable=False)
+    policy_number: Mapped[int] = mapped_column(unique=True, nullable=False)
 
-    med_card: Mapped["MedCard"] = relationship(back_populates="insurance", lazy="raise")
+    med_card: Mapped["MedCard"] = relationship(back_populates="insurance")

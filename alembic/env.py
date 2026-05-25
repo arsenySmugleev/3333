@@ -6,12 +6,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
-from src.models.base import Base
-from src.models.doctor import Doctor
-from src.models.insurance import Insurance
-from src.models.med_card import MedCard
-from src.models.patient import Patient
-
+from src.models import *
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

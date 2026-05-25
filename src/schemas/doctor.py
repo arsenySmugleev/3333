@@ -4,6 +4,7 @@ from pydantic import BaseModel, ConfigDict
 
 class DoctorBase(BaseModel):
     name: str
+    specialty: str
 
 
 class DoctorCreate(DoctorBase):
@@ -12,6 +13,7 @@ class DoctorCreate(DoctorBase):
 
 class DoctorUpdate(BaseModel):
     name: Optional[str] = None
+    specialty: Optional[str] = None
 
 
 class Doctor(DoctorBase):

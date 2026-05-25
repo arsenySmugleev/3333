@@ -6,9 +6,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 class MedCard(Base):
     __tablename__ = "med_cards"
     id: Mapped[int] = mapped_column(primary_key=True)
-    insurance_id: Mapped[int] = mapped_column(unique=True, nullable=False)
+    patient_name: Mapped[str] = mapped_column(nullable=False)
 
     insurance: Mapped["Insurance"] = relationship(back_populates="med_card",
                                                   uselist=False,
-                                                  cascade="all, delete-orphan",
-                                                  lazy="raise")
+                                                  cascade="all, delete-orphan")
