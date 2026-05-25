@@ -1,7 +1,0 @@
-{
-  "name" : "pg_toast",
-  "TABLES" : [ ],
-  "FUNCTIONS" : [ ],
-  "SEQUENCES" : [ ],
-  "VIEWS" : [ ]
-}
