@@ -1,4 +1,6 @@
 from typing import TYPE_CHECKING
+from uuid import UUID, uuid4
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 
 from sqlalchemy.sql.schema import ForeignKey
 from src.models.base import Base
@@ -11,8 +13,12 @@ if TYPE_CHECKING:
 
 class Insurance(Base):
     __tablename__ = "insurances"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    med_card_id: Mapped[int] = mapped_column(ForeignKey("med_cards.id"), unique=True, nullable=False)
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    med_card_id: Mapped[UUID] = (
+        mapped_column(ForeignKey("med_cards.id"),
+                      unique=True,
+                      nullable=False)
+    )
     policy_number: Mapped[int] = mapped_column(unique=True, nullable=False)
 
     med_card: Mapped["MedCard"] = relationship(back_populates="insurance")
