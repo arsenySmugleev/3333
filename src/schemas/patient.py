@@ -1,19 +1,19 @@
 from typing import Optional
+from uuid import UUID
+
 from pydantic import BaseModel, ConfigDict
+
+from src.schemas.common import NameStr
 
 
 class PatientBase(BaseModel):
-    name: str
+    name: NameStr
 
 
 class PatientCreate(PatientBase):
     pass
 
 
-class PatientUpdate(BaseModel):
-    name: Optional[str] = None
-
-
 class Patient(PatientBase):
-    id: int
+    id: UUID
     model_config = ConfigDict(from_attributes=True)

@@ -1,10 +1,12 @@
 from __future__ import annotations
-from typing import Optional
+from uuid import UUID
 from pydantic import BaseModel, ConfigDict
+
+from src.schemas.common import NameStr, OptionalNameStr
 
 
 class MedCardBase(BaseModel):
-    patient_name: str
+    patient_name: NameStr
 
 
 class MedCardCreate(MedCardBase):
@@ -12,9 +14,9 @@ class MedCardCreate(MedCardBase):
 
 
 class MedCardUpdate(BaseModel):
-    patient_name: Optional[str] = None
+    patient_name: OptionalNameStr = None
 
 
 class MedCard(MedCardBase):
-    id: int
+    id: UUID
     model_config = ConfigDict(from_attributes=True)

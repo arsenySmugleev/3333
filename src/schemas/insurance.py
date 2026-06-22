@@ -1,20 +1,30 @@
 from typing import Optional
+from uuid import UUID
+
 from pydantic import BaseModel, ConfigDict
+
+from src.models.insurance import Insurance as InsuranceModel
+from src.schemas.common import OptionalPolicyNumber, PolicyNumber
+
+
+class InsuranceMapper:
+    def map_data(self) -> "InsuranceModel":
+        return InsuranceModel(**self.model_dump())
 
 
 class InsuranceBase(BaseModel):
-    med_card_id: int
-    policy_number: int
+    policy_number: PolicyNumber
 
 
-class InsuranceCreate(InsuranceBase):
+class InsuranceCreate(InsuranceBase, InsuranceMapper):
     pass
 
 
 class InsuranceUpdate(BaseModel):
-    policy_number: Optional[int] = None
+    policy_number: OptionalPolicyNumber = None
 
 
 class Insurance(InsuranceBase):
-    id: int
+    id: UUID
+    med_card_id: UUID
     model_config = ConfigDict(from_attributes=True)

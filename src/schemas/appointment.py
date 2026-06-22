@@ -1,27 +1,41 @@
 from typing import Optional, List
 from datetime import datetime
+from uuid import UUID
+
 from pydantic import BaseModel, ConfigDict
+from src.models.appointment import Appointment as AppointmentModel
+from src.schemas.common import NameStr, OptionalNameStr
+
+
+class AppointmentMapper:
+    def map_data(self) -> "AppointmentModel":
+        return AppointmentModel(**self.model_dump())
+
+    @classmethod
+    def map_list(cls, appointments_data: List["AppointmentMapper"]) -> List["AppointmentModel"]:
+        if not appointments_data:
+            return []
+        return [
+            appointment.map_data()
+            for appointment in appointments_data
+        ]
 
 
 class AppointmentBase(BaseModel):
-    doc_id: int
+    doc_id: UUID
     time_start: datetime
-    name: str
+    name: NameStr
 
 
-class AppointmentCreate(AppointmentBase):
+class AppointmentCreate(AppointmentBase, AppointmentMapper):
     pass
 
 
-class AppointmentUpdate(BaseModel):
-    id: int
-    doc_id: Optional[int] = None
+class AppointmentUpdate(BaseModel, AppointmentMapper):
+    id: UUID
+    doc_id: Optional[UUID] = None
     time_start: Optional[datetime] = None
-    name: Optional[str] = None
-
-
-class AppointmentUpdateList(BaseModel):
-    appointment_to_update: List[AppointmentUpdate]
+    name: OptionalNameStr = None
 
 
 class Appointment(AppointmentBase):
