@@ -24,6 +24,12 @@ class MedCardInsuranceUpdate(BaseModel):
     insurance: Optional[InsuranceUpdate] = None
     model_config = ConfigDict(from_attributes=True)
 
+    def apply_to(self, med_card: MedCardModel) -> None:
+        if self.med_card is not None:
+            self.med_card.apply_to(med_card)
+        if self.insurance is not None:
+            self.insurance.apply_to(med_card.insurance)
+
 
 class MedCardInsuranceResponse(MedCard):
     insurance: "Insurance"
