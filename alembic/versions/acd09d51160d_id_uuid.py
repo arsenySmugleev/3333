@@ -1,7 +1,7 @@
 """id -> uuid
 
 Revision ID: acd09d51160d
-Revises: 
+Revises: 1ba393f232f6
 Create Date: 2026-06-01 21:45:14.645565
 
 """
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = 'acd09d51160d'
-down_revision: Union[str, Sequence[str], None] = None
+down_revision: Union[str, Sequence[str], None] = '1ba393f232f6'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
