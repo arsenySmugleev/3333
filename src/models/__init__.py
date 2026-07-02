@@ -5,7 +5,7 @@ from src.models.appointment import Appointment
 from src.models.med_service import MedService
 from src.models.insurance import Insurance
 from src.models.med_card import MedCard
-from src.models.association import patient_med_service_association
+from src.models.patient_med_association import patient_med_service_association
 
 
 __all__ = [
