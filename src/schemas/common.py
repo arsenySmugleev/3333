@@ -9,3 +9,8 @@ OptionalNameStr = Annotated[
 ]
 PolicyNumber = Annotated[int, Field(gt=0)]
 OptionalPolicyNumber = Annotated[Optional[int], Field(default=None, gt=0)]
+Snils = Annotated[str, Field(min_length=11, max_length=11, pattern=r"^\d{11}$")]
+OptionalSnils = Annotated[
+    Optional[str],
+    Field(default=None, min_length=11, max_length=11, pattern=r"^\d{11}$"),
+]
