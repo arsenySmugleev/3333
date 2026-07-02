@@ -1,5 +1,5 @@
 from typing import List
-from src.models.association import patient_med_service_association
+from src.models.patient_med_association import patient_med_service_association
 import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from uuid import UUID, uuid4
