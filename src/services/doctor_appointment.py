@@ -1,16 +1,19 @@
+import logging
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from src.exceptions.exceptions import raise_not_found
+from src.exceptions.exceptions import NotFoundException
 from src.models.doctor import Doctor as DoctorModel
 from src.schemas.doctor import (
     DoctorWithAppointmentCreate,
     DoctorWithAppointmentResponse,
     DoctorWithAppointmentUpdate,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class DoctorAppointmentService:
@@ -20,12 +23,18 @@ class DoctorAppointmentService:
 
     async def _get_doctor_model(self, doctor_id: UUID) -> DoctorModel:
         result = await self.session.execute(
-            select(DoctorModel).where(DoctorModel.id == doctor_id)
+            select(DoctorModel)
+            .where(
+                DoctorModel.id == doctor_id,
+                DoctorModel.is_deleted.is_(False),
+            )
             .options(selectinload(DoctorModel.appointment))
         )
         doctor = result.scalar_one_or_none()
         if not doctor:
-            raise_not_found(f"Doctor {doctor_id} not found")
+            message = f"Doctor {doctor_id} not found"
+            logger.warning(message)
+            raise NotFoundException(message)
         return doctor
 
     async def get_doctor_with_appointment(self, doctor_id: UUID) -> DoctorWithAppointmentResponse:
@@ -56,5 +65,5 @@ class DoctorAppointmentService:
 
     async def delete_doctor_with_appointment(self, doctor_id: UUID) -> None:
         doctor = await self._get_doctor_model(doctor_id)
-        await self.session.delete(doctor)
+        doctor.is_deleted = True
         await self.session.flush()

@@ -13,6 +13,11 @@ class DoctorBase(BaseModel):
     specialty: NameStr
 
 
+class DoctorCreate(DoctorBase):
+    def map_data(self) -> DoctorModel:
+        return DoctorModel(**self.model_dump())
+
+
 class Doctor(DoctorBase):
     id: UUID
     model_config = ConfigDict(from_attributes=True)
@@ -26,12 +31,12 @@ class DoctorWithAppointmentResponse(Doctor):
         return cls.model_validate(doctor)
 
 
-class DoctorWithAppointmentCreate(DoctorBase):
+class DoctorWithAppointmentCreate(DoctorCreate):
     appointment: List[AppointmentNestedCreate]
     model_config = ConfigDict(from_attributes=True)
 
     def map_data(self) -> DoctorModel:
-        doctor = DoctorModel(**self.model_dump(exclude={"appointment"}))
+        doctor = DoctorCreate.model_validate(self).map_data()
         doctor.appointment = AppointmentNestedCreate.to_model_list(self.appointment)
         return doctor
 

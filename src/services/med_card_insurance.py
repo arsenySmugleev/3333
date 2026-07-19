@@ -1,16 +1,19 @@
+import logging
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from src.exceptions.exceptions import raise_not_found
+from src.exceptions.exceptions import NotFoundException
 from src.models.med_card import MedCard as MedCardModel
 from src.schemas.med_card import (
     MedCardInsuranceCreate,
     MedCardInsuranceResponse,
     MedCardInsuranceUpdate,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class MedCardInsuranceService:
@@ -19,12 +22,18 @@ class MedCardInsuranceService:
 
     async def _get_med_card_model(self, med_card_id: UUID) -> MedCardModel:
         result = await self.session.execute(
-            select(MedCardModel).where(MedCardModel.id == med_card_id)
+            select(MedCardModel)
+            .where(
+                MedCardModel.id == med_card_id,
+                MedCardModel.is_deleted.is_(False),
+            )
             .options(selectinload(MedCardModel.insurance))
         )
         med_card = result.scalar_one_or_none()
         if not med_card:
-            raise_not_found(f"MedCard {med_card_id} not found")
+            message = f"MedCard {med_card_id} not found"
+            logger.warning(message)
+            raise NotFoundException(message)
         return med_card
 
     async def get_med_card_with_insurance(self, med_card_id: UUID) -> MedCardInsuranceResponse:
@@ -54,5 +63,5 @@ class MedCardInsuranceService:
 
     async def delete_med_card_with_insurance(self, med_card_id: UUID) -> None:
         med_card = await self._get_med_card_model(med_card_id)
-        await self.session.delete(med_card)
+        med_card.is_deleted = True
         await self.session.flush()

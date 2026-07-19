@@ -1,11 +1,8 @@
-import logging
-from typing import NoReturn
-
-logger = logging.getLogger(__name__)
+from starlette import status
 
 
 class AppException(Exception):
-    status_code = 400
+    status_code = status.HTTP_400_BAD_REQUEST
     error_code = "APP_ERROR"
 
     def __init__(self, message: str):
@@ -14,10 +11,5 @@ class AppException(Exception):
 
 
 class NotFoundException(AppException):
-    status_code = 404
+    status_code = status.HTTP_404_NOT_FOUND
     error_code = "NOT_FOUND"
-
-
-def raise_not_found(message: str) -> NoReturn:
-    logger.warning("%s", message)
-    raise NotFoundException(message)

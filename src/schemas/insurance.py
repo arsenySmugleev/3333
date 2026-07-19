@@ -1,4 +1,3 @@
-from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
@@ -7,17 +6,13 @@ from src.models.insurance import Insurance as InsuranceModel
 from src.schemas.common import OptionalPolicyNumber, PolicyNumber
 
 
-class InsuranceMapper:
-    def map_data(self) -> "InsuranceModel":
-        return InsuranceModel(**self.model_dump())
-
-
 class InsuranceBase(BaseModel):
     policy_number: PolicyNumber
 
 
-class InsuranceCreate(InsuranceBase, InsuranceMapper):
-    pass
+class InsuranceCreate(InsuranceBase):
+    def map_data(self) -> InsuranceModel:
+        return InsuranceModel(**self.model_dump())
 
 
 class InsuranceUpdate(BaseModel):

@@ -1,12 +1,15 @@
 from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
+import logging
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
-from src.exceptions.exceptions import raise_not_found
+from src.exceptions.exceptions import NotFoundException
 from src.models.appointment import Appointment as AppointmentModel
 from src.schemas.common import NameStr, OptionalNameStr
+
+logger = logging.getLogger(__name__)
 
 
 class AppointmentNestedCreate(BaseModel):
@@ -42,7 +45,9 @@ class AppointmentUpsert(BaseModel):
 
         appointment = appointments_by_id.get(self.id)
         if appointment is None:
-            raise_not_found(f"Appointment {self.id} not found for doctor {doctor_id}")
+            message = f"Appointment {self.id} not found for doctor {doctor_id}"
+            logger.warning(message)
+            raise NotFoundException(message)
 
         for key, value in self.model_dump(exclude_unset=True, exclude={"id"}).items():
             setattr(appointment, key, value)

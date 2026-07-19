@@ -13,6 +13,7 @@ class Patient(Base):
     __tablename__ = "patients"
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
     name: Mapped[str] = mapped_column(sa.String())
+    is_deleted: Mapped[bool] = mapped_column(sa.Boolean(), nullable=False, default=False, server_default=sa.false())
 
     med_service: Mapped[List["MedService"]] = relationship("MedService",
                                                            secondary=patient_med_service_association,
