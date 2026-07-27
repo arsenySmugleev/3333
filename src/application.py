@@ -1,21 +1,22 @@
 from fastapi import FastAPI
-from fastapi.responses import UJSONResponse
+from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
-from src.healthcheck.router import router
+from src.controllers.v1.doctors import router as doctor_appointment
+from src.controllers.v1.medical_cards import router as med_card_insurance
+from src.controllers.v1.patients import router as patient_med_service
+from src.exceptions.handlers.exception_handler import register_exception_handlers
+from src.healthcheck.router import router as healthcheck_router
+from src.logging_config import configure_logging
+from src.request_id_middleware import RequestIdMiddleware
 
 
 def get_app() -> FastAPI:
-    """
-    Get FastAPI application.
+    configure_logging()
 
-    This is the main constructor of an application.
-
-    :return: application.
-    """
     app = FastAPI(
         docs_url='/docs',
         openapi_url='/openapi.json',
-        default_response_class=UJSONResponse,
+        default_response_class=JSONResponse,
     )
 
     app.add_middleware(
@@ -25,6 +26,11 @@ def get_app() -> FastAPI:
         allow_methods=['*'],
         allow_headers=['*'],
     )
-    app.include_router(router)
+    app.add_middleware(RequestIdMiddleware)
+    app.include_router(healthcheck_router)
+    app.include_router(doctor_appointment, prefix="/api/v1")
+    app.include_router(patient_med_service, prefix="/api/v1")
+    app.include_router(med_card_insurance, prefix="/api/v1")
 
+    register_exception_handlers(app)
     return app
