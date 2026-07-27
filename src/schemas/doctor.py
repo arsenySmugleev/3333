@@ -4,6 +4,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 
 from src.models.doctor import Doctor as DoctorModel
+from src.models.appointment import Appointment as AppointmentModel
 from src.schemas.appointment import Appointment, AppointmentNestedCreate, AppointmentUpsert
 from src.schemas.common import NameStr, OptionalNameStr
 
@@ -47,15 +48,22 @@ class DoctorWithAppointmentUpdate(BaseModel):
     appointment: Optional[List[AppointmentUpsert]] = None
     model_config = ConfigDict(from_attributes=True)
 
-    def apply_to(self, doctor: DoctorModel) -> None:
+    def apply_to(self, doctor: DoctorModel) -> List[AppointmentModel]:
         for key, value in self.model_dump(exclude_unset=True, exclude={"appointment"}).items():
             setattr(doctor, key, value)
 
         if self.appointment is None:
-            return
+            return []
 
-        appointments_by_id = {appointment.id: appointment for appointment in doctor.appointment}
+        new_appointments: List[AppointmentModel] = []
+        appointments_by_id = {
+            appointment.id: appointment
+            for appointment in doctor.appointment
+            if not appointment.is_deleted
+        }
         for item in self.appointment:
             result = item.apply_to(doctor.id, appointments_by_id)
             if item.id is None:
                 doctor.appointment.append(result)
+                new_appointments.append(result)
+        return new_appointments

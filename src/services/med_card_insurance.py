@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from src.exceptions.exceptions import NotFoundException
+from src.models.insurance import Insurance as InsuranceModel
 from src.models.med_card import MedCard as MedCardModel
 from src.schemas.med_card import (
     MedCardInsuranceCreate,
@@ -27,8 +28,7 @@ class MedCardInsuranceService:
                 MedCardModel.id == med_card_id,
                 MedCardModel.is_deleted.is_(False),
             )
-            .options(selectinload(MedCardModel.insurance))
-        )
+            .options(selectinload(MedCardModel.insurance.and_(InsuranceModel.is_deleted.is_(False)))))
         med_card = result.scalar_one_or_none()
         if not med_card:
             message = f"MedCard {med_card_id} not found"
@@ -47,7 +47,7 @@ class MedCardInsuranceService:
         med_card = med_card_data.map_data()
         self.session.add(med_card)
         await self.session.flush()
-        await self.session.refresh(med_card, attribute_names=["insurance"])
+        med_card = await self._get_med_card_model(med_card.id)
         return MedCardInsuranceResponse.from_model(med_card)
 
     async def update_med_card_with_insurance(
@@ -58,10 +58,12 @@ class MedCardInsuranceService:
         med_card = await self._get_med_card_model(med_card_id)
         update_data.apply_to(med_card)
         await self.session.flush()
-        await self.session.refresh(med_card, attribute_names=["insurance"])
+        med_card = await self._get_med_card_model(med_card_id)
         return MedCardInsuranceResponse.from_model(med_card)
 
     async def delete_med_card_with_insurance(self, med_card_id: UUID) -> None:
         med_card = await self._get_med_card_model(med_card_id)
         med_card.is_deleted = True
+        if med_card.insurance is not None:
+            med_card.insurance.is_deleted = True
         await self.session.flush()

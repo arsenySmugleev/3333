@@ -18,5 +18,11 @@ class Appointment(Base):
     doc_id: Mapped[UUID] = mapped_column(ForeignKey("doctors.id"))
     time_start: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True))
     name: Mapped[str] = mapped_column(sa.String())
+    is_deleted: Mapped[bool] = mapped_column(
+        sa.Boolean(),
+        nullable=False,
+        default=False,
+        server_default=sa.false(),
+    )
 
     doctor: Mapped["Doctor"] = relationship(back_populates="appointment")

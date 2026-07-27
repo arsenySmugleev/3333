@@ -1,10 +1,12 @@
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 
-from sqlalchemy.sql.schema import ForeignKey
-from src.models.base import Base
+import sqlalchemy as sa
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.sql.schema import ForeignKey
+
+from src.models.base import Base
 
 
 if TYPE_CHECKING:
@@ -20,5 +22,11 @@ class Insurance(Base):
                       nullable=False)
     )
     policy_number: Mapped[int] = mapped_column(unique=True, nullable=False)
+    is_deleted: Mapped[bool] = mapped_column(
+        sa.Boolean(),
+        nullable=False,
+        default=False,
+        server_default=sa.false(),
+    )
 
     med_card: Mapped["MedCard"] = relationship(back_populates="insurance")

@@ -24,6 +24,8 @@ def upgrade() -> None:
         sa.Column("name", sa.String(), nullable=False),
         sa.Column("specialty", sa.String(), nullable=False),
         sa.Column("is_deleted", sa.Boolean(), server_default=sa.false(), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -32,6 +34,8 @@ def upgrade() -> None:
         sa.Column("patient_name", sa.String(), nullable=False),
         sa.Column("snils", sa.String(), nullable=False),
         sa.Column("is_deleted", sa.Boolean(), server_default=sa.false(), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("snils", name="uq_med_cards_snils"),
     )
@@ -40,6 +44,8 @@ def upgrade() -> None:
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("service_name", sa.String(), nullable=False),
         sa.Column("is_deleted", sa.Boolean(), server_default=sa.false(), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -47,6 +53,8 @@ def upgrade() -> None:
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("name", sa.String(), nullable=False),
         sa.Column("is_deleted", sa.Boolean(), server_default=sa.false(), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -55,6 +63,9 @@ def upgrade() -> None:
         sa.Column("doc_id", sa.Uuid(), nullable=False),
         sa.Column("time_start", sa.DateTime(timezone=True), nullable=False),
         sa.Column("name", sa.String(), nullable=False),
+        sa.Column("is_deleted", sa.Boolean(), server_default=sa.false(), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.ForeignKeyConstraint(["doc_id"], ["doctors.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
@@ -63,6 +74,9 @@ def upgrade() -> None:
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("med_card_id", sa.Uuid(), nullable=False),
         sa.Column("policy_number", sa.Integer(), nullable=False),
+        sa.Column("is_deleted", sa.Boolean(), server_default=sa.false(), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.ForeignKeyConstraint(["med_card_id"], ["med_cards.id"]),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("med_card_id"),

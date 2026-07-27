@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from src.exceptions.exceptions import NotFoundException
+from src.models.appointment import Appointment as AppointmentModel
 from src.models.doctor import Doctor as DoctorModel
 from src.schemas.doctor import (
     DoctorWithAppointmentCreate,
@@ -28,7 +29,11 @@ class DoctorAppointmentService:
                 DoctorModel.id == doctor_id,
                 DoctorModel.is_deleted.is_(False),
             )
-            .options(selectinload(DoctorModel.appointment))
+            .options(
+                selectinload(
+                    DoctorModel.appointment.and_(AppointmentModel.is_deleted.is_(False))
+                )
+            )
         )
         doctor = result.scalar_one_or_none()
         if not doctor:
@@ -49,7 +54,7 @@ class DoctorAppointmentService:
 
         self.session.add(doctor)
         await self.session.flush()
-        await self.session.refresh(doctor, attribute_names=["appointment"])
+        doctor = await self._get_doctor_model(doctor.id)
         return DoctorWithAppointmentResponse.from_model(doctor)
 
     async def update_doctor_with_appointment(
@@ -58,12 +63,16 @@ class DoctorAppointmentService:
         update_data: DoctorWithAppointmentUpdate,
     ) -> DoctorWithAppointmentResponse:
         doctor = await self._get_doctor_model(doctor_id)
-        update_data.apply_to(doctor)
+        new_appointments = update_data.apply_to(doctor)
+        if new_appointments:
+            self.session.add_all(new_appointments)
         await self.session.flush()
-        await self.session.refresh(doctor, attribute_names=["appointment"])
+        doctor = await self._get_doctor_model(doctor_id)
         return DoctorWithAppointmentResponse.from_model(doctor)
 
     async def delete_doctor_with_appointment(self, doctor_id: UUID) -> None:
         doctor = await self._get_doctor_model(doctor_id)
         doctor.is_deleted = True
+        for appointment in doctor.appointment:
+            appointment.is_deleted = True
         await self.session.flush()

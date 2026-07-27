@@ -5,7 +5,7 @@ import logging
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
-from src.exceptions.exceptions import NotFoundException
+from src.exceptions.exceptions import NotFoundException, ValidationException
 from src.models.appointment import Appointment as AppointmentModel
 from src.schemas.common import NameStr, OptionalNameStr
 
@@ -32,7 +32,9 @@ class AppointmentUpsert(BaseModel):
     @model_validator(mode="after")
     def validate_create_fields(self) -> "AppointmentUpsert":
         if self.id is None and (self.time_start is None or self.name is None):
-            raise ValueError("time_start and name are required when creating an appointment")
+            message = "time_start и name are required when creating an appointment"
+            logger.warning(message)
+            raise ValidationException(message)
         return self
 
     def apply_to(self, doctor_id: UUID, appointments_by_id: dict[UUID, AppointmentModel]) -> AppointmentModel:
