@@ -16,14 +16,30 @@ services:
       retries: 5
       start_period: 10s
 
+  redis:
+    image: redis:8-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   app:
     build: .
     ports:
       - "8000:8000"
     environment:
       postgres_url: postgresql+asyncpg://postgres:123456@postgres:5432/postgres
+      redis_url: redis://redis:6379/0
+      cache_ttl_seconds: "3600"
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - app-network

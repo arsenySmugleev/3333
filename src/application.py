@@ -1,30 +1,41 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
+
 from src.controllers.v1.doctors import router as doctor_appointment
 from src.controllers.v1.medical_cards import router as med_card_insurance
 from src.controllers.v1.patients import router as patient_med_service
 from src.exceptions.handlers.exception_handler import register_exception_handlers
 from src.healthcheck.router import router as healthcheck_router
 from src.logging_config import configure_logging
+from src.redis_client import close_redis
 from src.request_id_middleware import RequestIdMiddleware
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    yield
+    await close_redis()
 
 
 def get_app() -> FastAPI:
     configure_logging()
 
     app = FastAPI(
-        docs_url='/docs',
-        openapi_url='/openapi.json',
+        docs_url="/docs",
+        openapi_url="/openapi.json",
         default_response_class=JSONResponse,
+        lifespan=lifespan,
     )
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=['*'],
+        allow_origins=["*"],
         allow_credentials=True,
-        allow_methods=['*'],
-        allow_headers=['*'],
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
     app.add_middleware(RequestIdMiddleware)
     app.include_router(healthcheck_router)
