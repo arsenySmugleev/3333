@@ -43,41 +43,43 @@ async def test_get_doctor_not_found(doctor_service: DoctorAppointmentService):
 
 
 @pytest.mark.asyncio
-async def test_get_doctor_uses_cache(doctor_service: DoctorAppointmentService, redis):
+async def test_get_doctor_uses_cache(doctor_service: DoctorAppointmentService, cache):
     created = await doctor_service.create_doctor_with_appointment(_create_payload())
     cache_key = doctor_service._cache_key(created.id)
 
-    assert await redis.get(cache_key) is None
+    assert await cache.get(cache_key) is None
 
     await doctor_service.get_doctor_with_appointment(created.id)
-    cached = await redis.get(cache_key)
+    cached = await cache.get(cache_key)
     assert cached is not None
     assert '"name":"House"' in cached or '"name": "House"' in cached
 
-    await redis.set(cache_key, cached.replace("House", "CachedName"))
+    await cache.set(cache_key, cached.replace("House", "CachedName"))
     fetched = await doctor_service.get_doctor_with_appointment(created.id)
     assert fetched.name == "CachedName"
 
 
 @pytest.mark.asyncio
-async def test_update_invalidates_cache(doctor_service: DoctorAppointmentService, redis):
+async def test_update_refreshes_cache(doctor_service: DoctorAppointmentService, cache):
     created = await doctor_service.create_doctor_with_appointment(_create_payload())
     await doctor_service.get_doctor_with_appointment(created.id)
     cache_key = doctor_service._cache_key(created.id)
-    assert await redis.get(cache_key) is not None
+    assert await cache.get(cache_key) is not None
 
     updated = await doctor_service.update_doctor_with_appointment(
         created.id,
         DoctorWithAppointmentUpdate(name="Wilson"),
     )
     assert updated.name == "Wilson"
-    assert await redis.get(cache_key) is None
+    cached = await cache.get(cache_key)
+    assert cached is not None
+    assert "Wilson" in cached
 
 
 @pytest.mark.asyncio
 async def test_delete_soft_deletes_and_invalidates_cache(
     doctor_service: DoctorAppointmentService,
-    redis,
+    cache,
 ):
     created = await doctor_service.create_doctor_with_appointment(_create_payload())
     await doctor_service.get_doctor_with_appointment(created.id)
@@ -85,7 +87,7 @@ async def test_delete_soft_deletes_and_invalidates_cache(
 
     await doctor_service.delete_doctor_with_appointment(created.id)
 
-    assert await redis.get(cache_key) is None
+    assert await cache.get(cache_key) is None
     with pytest.raises(NotFoundException):
         await doctor_service.get_doctor_with_appointment(created.id)
 

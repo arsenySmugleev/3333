@@ -1,15 +1,14 @@
 import logging
 from uuid import UUID
 
-from redis.asyncio import Redis
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.config import Settings
 from src.exceptions.exceptions import NotFoundException
 from src.models.med_service import MedService as MedServiceModel
 from src.models.patient import Patient as PatientModel
+from src.redis_client import Cache
 from src.schemas.patient import (
     PatientWithMedServiceCreate,
     PatientWithMedServiceResponse,
@@ -17,21 +16,24 @@ from src.schemas.patient import (
 )
 
 logger = logging.getLogger(__name__)
-settings = Settings()
 
 
 class PatientMedServiceService:
 
-    def __init__(self, session: AsyncSession, redis: Redis):
+    def __init__(self, session: AsyncSession, cache: Cache):
         self.session = session
-        self.redis = redis
+        self.cache = cache
 
     @staticmethod
     def _cache_key(patient_id: UUID) -> str:
         return f"patient:{patient_id}"
 
-    async def _invalidate_cache(self, patient_id: UUID) -> None:
-        await self.redis.delete(self._cache_key(patient_id))
+    async def _refresh_cache(
+        self,
+        patient_id: UUID,
+        response: PatientWithMedServiceResponse,
+    ) -> None:
+        await self.cache.set(self._cache_key(patient_id), response.model_dump_json())
 
     async def _get_patient_model(self, patient_id: UUID) -> PatientModel:
         result = await self.session.execute(
@@ -56,17 +58,13 @@ class PatientMedServiceService:
 
     async def get_patient_with_med_service(self, patient_id: UUID) -> PatientWithMedServiceResponse:
         cache_key = self._cache_key(patient_id)
-        cached = await self.redis.get(cache_key)
-        if cached is not None:
+        cached = await self.cache.get(cache_key)
+        if cached:
             return PatientWithMedServiceResponse.model_validate_json(cached)
 
         patient = await self._get_patient_model(patient_id)
         response = PatientWithMedServiceResponse.from_model(patient)
-        await self.redis.set(
-            cache_key,
-            response.model_dump_json(),
-            ex=settings.cache_ttl_seconds,
-        )
+        await self.cache.set(cache_key, response.model_dump_json())
         return response
 
     async def create_patient_with_med_service(
@@ -106,9 +104,10 @@ class PatientMedServiceService:
             patient.med_service = new_services
 
         await self.session.flush()
-        await self._invalidate_cache(patient_id)
         patient = await self._get_patient_model(patient_id)
-        return PatientWithMedServiceResponse.from_model(patient)
+        response = PatientWithMedServiceResponse.from_model(patient)
+        await self._refresh_cache(patient_id, response)
+        return response
 
     async def delete_patient_or_med_service(
         self,
@@ -120,7 +119,7 @@ class PatientMedServiceService:
             patient = await self._get_patient_model(patient_id)
             patient.is_deleted = True
             await self.session.flush()
-            await self._invalidate_cache(patient_id)
+            await self.cache.delete(self._cache_key(patient_id))
 
         elif delete_type.lower() == "med_service" and med_service_id:
             result = await self.session.execute(
@@ -139,4 +138,8 @@ class PatientMedServiceService:
             med_service.is_deleted = True
             await self.session.flush()
             for patient in med_service.patient:
-                await self._invalidate_cache(patient.id)
+                if patient.is_deleted:
+                    continue
+                refreshed_patient = await self._get_patient_model(patient.id)
+                response = PatientWithMedServiceResponse.from_model(refreshed_patient)
+                await self._refresh_cache(patient.id, response)

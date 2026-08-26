@@ -44,28 +44,28 @@ async def test_get_med_card_not_found(med_card_service: MedCardInsuranceService)
 
 
 @pytest.mark.asyncio
-async def test_get_med_card_uses_cache(med_card_service: MedCardInsuranceService, redis):
+async def test_get_med_card_uses_cache(med_card_service: MedCardInsuranceService, cache):
     created = await med_card_service.create_med_card_with_insurance(_create_payload())
     cache_key = med_card_service._cache_key(created.id)
 
-    assert await redis.get(cache_key) is None
+    assert await cache.get(cache_key) is None
 
     await med_card_service.get_med_card_with_insurance(created.id)
-    cached = await redis.get(cache_key)
+    cached = await cache.get(cache_key)
     assert cached is not None
     assert "Ivan" in cached
 
-    await redis.set(cache_key, cached.replace("Ivan", "CachedName"))
+    await cache.set(cache_key, cached.replace("Ivan", "CachedName"))
     fetched = await med_card_service.get_med_card_with_insurance(created.id)
     assert fetched.patient_name == "CachedName"
 
 
 @pytest.mark.asyncio
-async def test_update_invalidates_cache(med_card_service: MedCardInsuranceService, redis):
+async def test_update_refreshes_cache(med_card_service: MedCardInsuranceService, cache):
     created = await med_card_service.create_med_card_with_insurance(_create_payload())
     await med_card_service.get_med_card_with_insurance(created.id)
     cache_key = med_card_service._cache_key(created.id)
-    assert await redis.get(cache_key) is not None
+    assert await cache.get(cache_key) is not None
 
     updated = await med_card_service.update_med_card_with_insurance(
         created.id,
@@ -76,13 +76,16 @@ async def test_update_invalidates_cache(med_card_service: MedCardInsuranceServic
     )
     assert updated.patient_name == "Petr"
     assert updated.insurance.policy_number == 9999
-    assert await redis.get(cache_key) is None
+    cached = await cache.get(cache_key)
+    assert cached is not None
+    assert "Petr" in cached
+    assert "9999" in cached
 
 
 @pytest.mark.asyncio
 async def test_delete_soft_deletes_and_invalidates_cache(
     med_card_service: MedCardInsuranceService,
-    redis,
+    cache,
 ):
     created = await med_card_service.create_med_card_with_insurance(_create_payload())
     await med_card_service.get_med_card_with_insurance(created.id)
@@ -90,6 +93,6 @@ async def test_delete_soft_deletes_and_invalidates_cache(
 
     await med_card_service.delete_med_card_with_insurance(created.id)
 
-    assert await redis.get(cache_key) is None
+    assert await cache.get(cache_key) is None
     with pytest.raises(NotFoundException):
         await med_card_service.get_med_card_with_insurance(created.id)

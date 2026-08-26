@@ -1,15 +1,14 @@
 import logging
 from uuid import UUID
 
-from redis.asyncio import Redis
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.config import Settings
 from src.exceptions.exceptions import NotFoundException
 from src.models.appointment import Appointment as AppointmentModel
 from src.models.doctor import Doctor as DoctorModel
+from src.redis_client import Cache
 from src.schemas.doctor import (
     DoctorWithAppointmentCreate,
     DoctorWithAppointmentResponse,
@@ -17,21 +16,24 @@ from src.schemas.doctor import (
 )
 
 logger = logging.getLogger(__name__)
-settings = Settings()
 
 
 class DoctorAppointmentService:
 
-    def __init__(self, session: AsyncSession, redis: Redis):
+    def __init__(self, session: AsyncSession, cache: Cache):
         self.session = session
-        self.redis = redis
+        self.cache = cache
 
     @staticmethod
     def _cache_key(doctor_id: UUID) -> str:
         return f"doctor:{doctor_id}"
 
-    async def _invalidate_cache(self, doctor_id: UUID) -> None:
-        await self.redis.delete(self._cache_key(doctor_id))
+    async def _refresh_cache(
+        self,
+        doctor_id: UUID,
+        response: DoctorWithAppointmentResponse,
+    ) -> None:
+        await self.cache.set(self._cache_key(doctor_id), response.model_dump_json())
 
     async def _get_doctor_model(self, doctor_id: UUID) -> DoctorModel:
         result = await self.session.execute(
@@ -56,17 +58,13 @@ class DoctorAppointmentService:
 
     async def get_doctor_with_appointment(self, doctor_id: UUID) -> DoctorWithAppointmentResponse:
         cache_key = self._cache_key(doctor_id)
-        cached = await self.redis.get(cache_key)
-        if cached is not None:
+        cached = await self.cache.get(cache_key)
+        if cached:
             return DoctorWithAppointmentResponse.model_validate_json(cached)
 
         doctor = await self._get_doctor_model(doctor_id)
         response = DoctorWithAppointmentResponse.from_model(doctor)
-        await self.redis.set(
-            cache_key,
-            response.model_dump_json(),
-            ex=settings.cache_ttl_seconds,
-        )
+        await self.cache.set(cache_key, response.model_dump_json())
         return response
 
     async def create_doctor_with_appointment(
@@ -90,9 +88,10 @@ class DoctorAppointmentService:
         if new_appointments:
             self.session.add_all(new_appointments)
         await self.session.flush()
-        await self._invalidate_cache(doctor_id)
         doctor = await self._get_doctor_model(doctor_id)
-        return DoctorWithAppointmentResponse.from_model(doctor)
+        response = DoctorWithAppointmentResponse.from_model(doctor)
+        await self._refresh_cache(doctor_id, response)
+        return response
 
     async def delete_doctor_with_appointment(self, doctor_id: UUID) -> None:
         doctor = await self._get_doctor_model(doctor_id)
@@ -100,4 +99,4 @@ class DoctorAppointmentService:
         for appointment in doctor.appointment:
             appointment.is_deleted = True
         await self.session.flush()
-        await self._invalidate_cache(doctor_id)
+        await self.cache.delete(self._cache_key(doctor_id))

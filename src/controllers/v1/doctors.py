@@ -1,11 +1,10 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, status
-from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db import get_session
-from src.redis_client import get_redis
+from src.redis_client import Cache, get_cache
 from src.schemas.doctor import (
     DoctorWithAppointmentCreate,
     DoctorWithAppointmentResponse,
@@ -20,9 +19,9 @@ router = APIRouter(prefix="/doctor_appointment", tags=["doctor_with_appointment"
 async def get_doctor_with_appointments(
     doctor_id: UUID,
     session: AsyncSession = Depends(get_session),
-    redis: Redis = Depends(get_redis),
+    cache: Cache = Depends(get_cache),
 ):
-    service = DoctorAppointmentService(session, redis)
+    service = DoctorAppointmentService(session, cache)
     return await service.get_doctor_with_appointment(doctor_id)
 
 
@@ -30,9 +29,9 @@ async def get_doctor_with_appointments(
 async def create_doctor_with_appointments(
     doctor_data: DoctorWithAppointmentCreate,
     session: AsyncSession = Depends(get_session),
-    redis: Redis = Depends(get_redis),
+    cache: Cache = Depends(get_cache),
 ):
-    service = DoctorAppointmentService(session, redis)
+    service = DoctorAppointmentService(session, cache)
     return await service.create_doctor_with_appointment(doctor_data=doctor_data)
 
 
@@ -41,9 +40,9 @@ async def update_doctor_with_appointments(
     doctor_id: UUID,
     update_data: DoctorWithAppointmentUpdate,
     session: AsyncSession = Depends(get_session),
-    redis: Redis = Depends(get_redis),
+    cache: Cache = Depends(get_cache),
 ):
-    service = DoctorAppointmentService(session, redis)
+    service = DoctorAppointmentService(session, cache)
     return await service.update_doctor_with_appointment(doctor_id, update_data)
 
 
@@ -51,7 +50,7 @@ async def update_doctor_with_appointments(
 async def delete_doctor_with_appointments(
     doctor_id: UUID,
     session: AsyncSession = Depends(get_session),
-    redis: Redis = Depends(get_redis),
+    cache: Cache = Depends(get_cache),
 ):
-    service = DoctorAppointmentService(session, redis)
+    service = DoctorAppointmentService(session, cache)
     await service.delete_doctor_with_appointment(doctor_id)

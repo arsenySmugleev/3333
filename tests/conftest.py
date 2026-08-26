@@ -1,6 +1,10 @@
+import asyncio
 from collections.abc import AsyncGenerator
+from pathlib import Path
 
 import pytest
+from alembic import command
+from alembic.config import Config
 from httpx import ASGITransport, AsyncClient
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
@@ -9,11 +13,27 @@ from testcontainers.community.redis import RedisContainer
 
 from src.application import get_app
 from src.db import get_session
-from src.models import Base
-from src.redis_client import get_redis
+from src.redis_client import RedisCache, get_cache
 from src.services.doctor_appointment import DoctorAppointmentService
 from src.services.med_card_insurance import MedCardInsuranceService
 from src.services.patient_med_service import PatientMedServiceService
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _alembic_config(db_url: str) -> Config:
+    config = Config(str(PROJECT_ROOT / "alembic.ini"))
+    config.set_main_option("sqlalchemy.url", db_url)
+    return config
+
+
+def reset_database(db_url: str) -> None:
+    config = _alembic_config(db_url)
+    try:
+        command.downgrade(config, "base")
+    except Exception:
+        pass
+    command.upgrade(config, "head")
 
 
 @pytest.fixture(scope="session")
@@ -43,12 +63,9 @@ def redis_url(redis_container: RedisContainer) -> str:
 
 @pytest.fixture
 async def engine(postgres_url: str) -> AsyncGenerator[AsyncEngine, None]:
+    await asyncio.to_thread(reset_database, postgres_url)
     engine = create_async_engine(postgres_url, pool_pre_ping=True)
-    async with engine.begin() as connection:
-        await connection.run_sync(Base.metadata.create_all)
     yield engine
-    async with engine.begin() as connection:
-        await connection.run_sync(Base.metadata.drop_all)
     await engine.dispose()
 
 
@@ -74,24 +91,29 @@ async def redis(redis_url: str) -> AsyncGenerator[Redis, None]:
 
 
 @pytest.fixture
-def doctor_service(session: AsyncSession, redis: Redis) -> DoctorAppointmentService:
-    return DoctorAppointmentService(session, redis)
+def cache(redis: Redis) -> RedisCache:
+    return RedisCache(redis, 3600)
 
 
 @pytest.fixture
-def patient_service(session: AsyncSession, redis: Redis) -> PatientMedServiceService:
-    return PatientMedServiceService(session, redis)
+def doctor_service(session: AsyncSession, cache: RedisCache) -> DoctorAppointmentService:
+    return DoctorAppointmentService(session, cache)
 
 
 @pytest.fixture
-def med_card_service(session: AsyncSession, redis: Redis) -> MedCardInsuranceService:
-    return MedCardInsuranceService(session, redis)
+def patient_service(session: AsyncSession, cache: RedisCache) -> PatientMedServiceService:
+    return PatientMedServiceService(session, cache)
+
+
+@pytest.fixture
+def med_card_service(session: AsyncSession, cache: RedisCache) -> MedCardInsuranceService:
+    return MedCardInsuranceService(session, cache)
 
 
 @pytest.fixture
 async def client(
     engine: AsyncEngine,
-    redis: Redis,
+    cache: RedisCache,
 ) -> AsyncGenerator[AsyncClient, None]:
     session_factory = async_sessionmaker(
         bind=engine,
@@ -99,24 +121,20 @@ async def client(
         expire_on_commit=False,
     )
 
-    async def override_get_session() -> AsyncGenerator[AsyncSession, None]:
-        async with session_factory() as session:
-            try:
-                yield session
-                await session.commit()
-            except Exception:
-                await session.rollback()
-                raise
+    async with session_factory() as session:
+        async def override_get_session() -> AsyncGenerator[AsyncSession, None]:
+            yield session
 
-    async def override_get_redis() -> Redis:
-        return redis
+        async def override_get_cache() -> RedisCache:
+            return cache
 
-    app = get_app()
-    app.dependency_overrides[get_session] = override_get_session
-    app.dependency_overrides[get_redis] = override_get_redis
+        app = get_app()
+        app.dependency_overrides[get_session] = override_get_session
+        app.dependency_overrides[get_cache] = override_get_cache
 
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as http_client:
-        yield http_client
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as http_client:
+            yield http_client
 
-    app.dependency_overrides.clear()
+        app.dependency_overrides.clear()
+        await session.rollback()

@@ -1,11 +1,10 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, status
-from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db import get_session
-from src.redis_client import get_redis
+from src.redis_client import Cache, get_cache
 from src.schemas.patient import (
     PatientWithMedServiceCreate,
     PatientWithMedServiceResponse,
@@ -20,9 +19,9 @@ router = APIRouter(prefix="/patient_med_service", tags=["patient_with_med_servic
 async def get_patient_with_med_service(
     patient_id: UUID,
     session: AsyncSession = Depends(get_session),
-    redis: Redis = Depends(get_redis),
+    cache: Cache = Depends(get_cache),
 ):
-    service = PatientMedServiceService(session, redis)
+    service = PatientMedServiceService(session, cache)
     return await service.get_patient_with_med_service(patient_id)
 
 
@@ -30,9 +29,9 @@ async def get_patient_with_med_service(
 async def create_patient_with_med_service(
     patient_data: PatientWithMedServiceCreate,
     session: AsyncSession = Depends(get_session),
-    redis: Redis = Depends(get_redis),
+    cache: Cache = Depends(get_cache),
 ):
-    service = PatientMedServiceService(session, redis)
+    service = PatientMedServiceService(session, cache)
     return await service.create_patient_with_med_service(patient_data)
 
 
@@ -41,9 +40,9 @@ async def update_patient_with_med_service(
     patient_id: UUID,
     update_data: PatientWithMedServiceUpdate,
     session: AsyncSession = Depends(get_session),
-    redis: Redis = Depends(get_redis),
+    cache: Cache = Depends(get_cache),
 ):
-    service = PatientMedServiceService(session, redis)
+    service = PatientMedServiceService(session, cache)
     return await service.update_patient_with_med_service(patient_id, update_data)
 
 
@@ -53,7 +52,7 @@ async def delete_patient_or_med_service(
     med_service_id: UUID = None,
     delete_type: str = "patient",
     session: AsyncSession = Depends(get_session),
-    redis: Redis = Depends(get_redis),
+    cache: Cache = Depends(get_cache),
 ):
-    service = PatientMedServiceService(session, redis)
+    service = PatientMedServiceService(session, cache)
     await service.delete_patient_or_med_service(patient_id, med_service_id, delete_type)
