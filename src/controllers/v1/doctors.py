@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db import get_session
-from src.redis_client import Cache, get_cache
+from src.cache import Cache, get_cache
 from src.schemas.doctor import (
     DoctorWithAppointmentCreate,
     DoctorWithAppointmentResponse,

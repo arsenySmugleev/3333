@@ -10,7 +10,7 @@ from src.controllers.v1.patients import router as patient_med_service
 from src.exceptions.handlers.exception_handler import register_exception_handlers
 from src.healthcheck.router import router as healthcheck_router
 from src.logging_config import configure_logging
-from src.redis_client import close_redis
+from src.cache import close_redis
 from src.request_id_middleware import RequestIdMiddleware
 
 

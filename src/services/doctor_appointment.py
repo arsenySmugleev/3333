@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 from src.exceptions.exceptions import NotFoundException
 from src.models.appointment import Appointment as AppointmentModel
 from src.models.doctor import Doctor as DoctorModel
-from src.redis_client import Cache
+from src.cache import Cache
 from src.schemas.doctor import (
     DoctorWithAppointmentCreate,
     DoctorWithAppointmentResponse,

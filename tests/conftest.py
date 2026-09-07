@@ -13,7 +13,7 @@ from testcontainers.community.redis import RedisContainer
 
 from src.application import get_app
 from src.db import get_session
-from src.redis_client import RedisCache, get_cache
+from src.cache import RedisCache, get_cache
 from src.services.doctor_appointment import DoctorAppointmentService
 from src.services.med_card_insurance import MedCardInsuranceService
 from src.services.patient_med_service import PatientMedServiceService

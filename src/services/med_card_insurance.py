@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 from src.exceptions.exceptions import NotFoundException
 from src.models.insurance import Insurance as InsuranceModel
 from src.models.med_card import MedCard as MedCardModel
-from src.redis_client import Cache
+from src.cache import Cache
 from src.schemas.med_card import (
     MedCardInsuranceCreate,
     MedCardInsuranceResponse,
