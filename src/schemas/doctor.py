@@ -37,7 +37,7 @@ class DoctorWithAppointmentCreate(DoctorCreate):
     model_config = ConfigDict(from_attributes=True)
 
     def map_data(self) -> DoctorModel:
-        doctor = DoctorCreate.model_validate(self).map_data()
+        doctor = DoctorModel(**self.model_dump(exclude={"appointment"}))
         doctor.appointment = AppointmentNestedCreate.to_model_list(self.appointment)
         return doctor
 

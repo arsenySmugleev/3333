@@ -1,13 +1,14 @@
 import logging
 from uuid import UUID
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.exceptions.exceptions import NotFoundException
-from src.models.patient import Patient as PatientModel
 from src.models.med_service import MedService as MedServiceModel
+from src.models.patient import Patient as PatientModel
+from src.cache import Cache
 from src.schemas.patient import (
     PatientWithMedServiceCreate,
     PatientWithMedServiceResponse,
@@ -19,8 +20,20 @@ logger = logging.getLogger(__name__)
 
 class PatientMedServiceService:
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession, cache: Cache):
         self.session = session
+        self.cache = cache
+
+    @staticmethod
+    def _cache_key(patient_id: UUID) -> str:
+        return f"patient:{patient_id}"
+
+    async def _refresh_cache(
+        self,
+        patient_id: UUID,
+        response: PatientWithMedServiceResponse,
+    ) -> None:
+        await self.cache.set(self._cache_key(patient_id), response.model_dump_json())
 
     async def _get_patient_model(self, patient_id: UUID) -> PatientModel:
         result = await self.session.execute(
@@ -29,7 +42,12 @@ class PatientMedServiceService:
                 PatientModel.id == patient_id,
                 PatientModel.is_deleted.is_(False),
             )
-            .options(selectinload(PatientModel.med_service))
+            .options(
+                selectinload(
+                    PatientModel.med_service.and_(MedServiceModel.is_deleted.is_(False))
+                )
+            )
+            .execution_options(populate_existing=True)
         )
         patient = result.scalar_one_or_none()
         if not patient:
@@ -39,8 +57,15 @@ class PatientMedServiceService:
         return patient
 
     async def get_patient_with_med_service(self, patient_id: UUID) -> PatientWithMedServiceResponse:
+        cache_key = self._cache_key(patient_id)
+        cached = await self.cache.get(cache_key)
+        if cached:
+            return PatientWithMedServiceResponse.model_validate_json(cached)
+
         patient = await self._get_patient_model(patient_id)
-        return PatientWithMedServiceResponse.from_model(patient)
+        response = PatientWithMedServiceResponse.from_model(patient)
+        await self.cache.set(cache_key, response.model_dump_json())
+        return response
 
     async def create_patient_with_med_service(
         self,
@@ -49,7 +74,7 @@ class PatientMedServiceService:
         patient = patient_data.map_data()
         self.session.add(patient)
         await self.session.flush()
-        await self.session.refresh(patient, attribute_names=["med_service"])
+        patient = await self._get_patient_model(patient.id)
         return PatientWithMedServiceResponse.from_model(patient)
 
     async def update_patient_with_med_service(
@@ -79,8 +104,10 @@ class PatientMedServiceService:
             patient.med_service = new_services
 
         await self.session.flush()
-        await self.session.refresh(patient, attribute_names=["med_service"])
-        return PatientWithMedServiceResponse.from_model(patient)
+        patient = await self._get_patient_model(patient_id)
+        response = PatientWithMedServiceResponse.from_model(patient)
+        await self._refresh_cache(patient_id, response)
+        return response
 
     async def delete_patient_or_med_service(
         self,
@@ -92,13 +119,16 @@ class PatientMedServiceService:
             patient = await self._get_patient_model(patient_id)
             patient.is_deleted = True
             await self.session.flush()
+            await self.cache.delete(self._cache_key(patient_id))
 
         elif delete_type.lower() == "med_service" and med_service_id:
             result = await self.session.execute(
-                select(MedServiceModel).where(
+                select(MedServiceModel)
+                .where(
                     MedServiceModel.id == med_service_id,
                     MedServiceModel.is_deleted.is_(False),
                 )
+                .options(selectinload(MedServiceModel.patient))
             )
             med_service = result.scalar_one_or_none()
             if not med_service:
@@ -107,3 +137,9 @@ class PatientMedServiceService:
                 raise NotFoundException(message)
             med_service.is_deleted = True
             await self.session.flush()
+            for patient in med_service.patient:
+                if patient.is_deleted:
+                    continue
+                refreshed_patient = await self._get_patient_model(patient.id)
+                response = PatientWithMedServiceResponse.from_model(refreshed_patient)
+                await self._refresh_cache(patient.id, response)
