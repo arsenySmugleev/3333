@@ -5,15 +5,17 @@ from pathlib import Path
 import pytest
 from alembic import command
 from alembic.config import Config
+from alembic.runtime.migration import MigrationContext
 from httpx import ASGITransport, AsyncClient
 from redis.asyncio import Redis
+from sqlalchemy import Connection
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from testcontainers.community.postgres import PostgresContainer
 from testcontainers.community.redis import RedisContainer
 
+from infrastructure.cache import RedisCache, get_cache
 from src.application import get_app
 from src.db import get_session
-from src.cache import RedisCache, get_cache
 from src.services.doctor_appointment import DoctorAppointmentService
 from src.services.med_card_insurance import MedCardInsuranceService
 from src.services.patient_med_service import PatientMedServiceService
@@ -27,12 +29,24 @@ def _alembic_config(db_url: str) -> Config:
     return config
 
 
+def _current_revision(sync_connection: Connection) -> str | None:
+    return MigrationContext.configure(sync_connection).get_current_revision()
+
+
+async def _get_current_revision(db_url: str) -> str | None:
+    engine = create_async_engine(db_url, pool_pre_ping=True)
+    try:
+        async with engine.connect() as connection:
+            return await connection.run_sync(_current_revision)
+    finally:
+        await engine.dispose()
+
+
 def reset_database(db_url: str) -> None:
     config = _alembic_config(db_url)
-    try:
+    current = asyncio.run(_get_current_revision(db_url))
+    if current is not None:
         command.downgrade(config, "base")
-    except Exception:
-        pass
     command.upgrade(config, "head")
 
 

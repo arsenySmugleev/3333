@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db import get_session
-from src.cache import Cache, get_cache
+from infrastructure.cache import RedisCache, get_cache
 from src.schemas.med_card import (
     MedCardInsuranceCreate,
     MedCardInsuranceResponse,
@@ -19,7 +19,7 @@ router = APIRouter(prefix="/med_card_insurance", tags=["med_card_with_insurance"
 async def get_med_card_with_insurance(
     med_card_id: UUID,
     session: AsyncSession = Depends(get_session),
-    cache: Cache = Depends(get_cache),
+    cache: RedisCache = Depends(get_cache),
 ):
     service = MedCardInsuranceService(session, cache)
     return await service.get_med_card_with_insurance(med_card_id)
@@ -29,7 +29,7 @@ async def get_med_card_with_insurance(
 async def create_med_card_with_insurance(
     med_card_data: MedCardInsuranceCreate,
     session: AsyncSession = Depends(get_session),
-    cache: Cache = Depends(get_cache),
+    cache: RedisCache = Depends(get_cache),
 ):
     service = MedCardInsuranceService(session, cache)
     return await service.create_med_card_with_insurance(med_card_data)
@@ -40,7 +40,7 @@ async def update_med_card_with_insurance(
     med_card_id: UUID,
     update_data: MedCardInsuranceUpdate,
     session: AsyncSession = Depends(get_session),
-    cache: Cache = Depends(get_cache),
+    cache: RedisCache = Depends(get_cache),
 ):
     service = MedCardInsuranceService(session, cache)
     return await service.update_med_card_with_insurance(med_card_id, update_data)
@@ -50,7 +50,7 @@ async def update_med_card_with_insurance(
 async def delete_med_card_with_insurance(
     med_card_id: UUID,
     session: AsyncSession = Depends(get_session),
-    cache: Cache = Depends(get_cache),
+    cache: RedisCache = Depends(get_cache),
 ):
     service = MedCardInsuranceService(session, cache)
     await service.delete_med_card_with_insurance(med_card_id)

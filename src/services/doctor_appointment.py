@@ -5,10 +5,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from src.models import CacheInvalidationJob
 from src.exceptions.exceptions import NotFoundException
 from src.models.appointment import Appointment as AppointmentModel
 from src.models.doctor import Doctor as DoctorModel
-from src.cache import Cache
+from infrastructure.cache import RedisCache
 from src.schemas.doctor import (
     DoctorWithAppointmentCreate,
     DoctorWithAppointmentResponse,
@@ -20,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 class DoctorAppointmentService:
 
-    def __init__(self, session: AsyncSession, cache: Cache):
+    def __init__(self, session: AsyncSession, cache: RedisCache):
         self.session = session
         self.cache = cache
 
@@ -99,4 +100,5 @@ class DoctorAppointmentService:
         for appointment in doctor.appointment:
             appointment.is_deleted = True
         await self.session.flush()
+        self.session.add(CacheInvalidationJob(cache_key=self._cache_key(doctor_id)))
         await self.cache.delete(self._cache_key(doctor_id))

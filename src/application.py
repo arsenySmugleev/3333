@@ -1,23 +1,44 @@
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
+from redis.asyncio import Redis
 from starlette.middleware.cors import CORSMiddleware
 
+from infrastructure.cache import RedisCache
+from infrastructure.cache.invalidation import run_invalidation_worker
+from src.config import Settings
 from src.controllers.v1.doctors import router as doctor_appointment
 from src.controllers.v1.medical_cards import router as med_card_insurance
 from src.controllers.v1.patients import router as patient_med_service
+from src.db import SessionFactory
 from src.exceptions.handlers.exception_handler import register_exception_handlers
 from src.healthcheck.router import router as healthcheck_router
 from src.logging_config import configure_logging
-from src.cache import close_redis
 from src.request_id_middleware import RequestIdMiddleware
 
 
 @asynccontextmanager
-async def lifespan(_app: FastAPI):
+async def lifespan(app: FastAPI):
+    settings = Settings()
+    redis = Redis.from_url(str(settings.redis_url), decode_responses=True)
+    cache = RedisCache(redis, settings.cache_ttl_seconds)
+
+    app.state.redis = redis
+    app.state.cache = cache
+
+    worker_task = asyncio.create_task(run_invalidation_worker(SessionFactory, cache))
+    app.state.invalidation_worker = worker_task
+
     yield
-    await close_redis()
+
+    worker_task.cancel()
+    try:
+        await worker_task
+    except asyncio.CancelledError:
+        pass
+    await redis.aclose()
 
 
 def get_app() -> FastAPI:

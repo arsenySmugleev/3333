@@ -5,10 +5,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from src.models import CacheInvalidationJob
 from src.exceptions.exceptions import NotFoundException
 from src.models.med_service import MedService as MedServiceModel
 from src.models.patient import Patient as PatientModel
-from src.cache import Cache
+from infrastructure.cache import RedisCache
 from src.schemas.patient import (
     PatientWithMedServiceCreate,
     PatientWithMedServiceResponse,
@@ -20,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 class PatientMedServiceService:
 
-    def __init__(self, session: AsyncSession, cache: Cache):
+    def __init__(self, session: AsyncSession, cache: RedisCache):
         self.session = session
         self.cache = cache
 
@@ -119,6 +120,7 @@ class PatientMedServiceService:
             patient = await self._get_patient_model(patient_id)
             patient.is_deleted = True
             await self.session.flush()
+            self.session.add(CacheInvalidationJob(cache_key=self._cache_key(patient_id)))
             await self.cache.delete(self._cache_key(patient_id))
 
         elif delete_type.lower() == "med_service" and med_service_id:
@@ -140,6 +142,6 @@ class PatientMedServiceService:
             for patient in med_service.patient:
                 if patient.is_deleted:
                     continue
-                refreshed_patient = await self._get_patient_model(patient.id)
-                response = PatientWithMedServiceResponse.from_model(refreshed_patient)
-                await self._refresh_cache(patient.id, response)
+                key = self._cache_key(patient.id)
+                self.session.add(CacheInvalidationJob(cache_key=key))
+                await self.cache.delete(key)

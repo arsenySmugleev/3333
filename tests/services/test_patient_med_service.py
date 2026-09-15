@@ -114,7 +114,7 @@ async def test_update_replaces_med_services(patient_service: PatientMedServiceSe
 
 
 @pytest.mark.asyncio
-async def test_delete_med_service_refreshes_patient_cache(
+async def test_delete_med_service_invalidates_patient_cache(
     patient_service: PatientMedServiceService,
     cache,
 ):
@@ -129,8 +129,6 @@ async def test_delete_med_service_refreshes_patient_cache(
         delete_type="med_service",
     )
 
-    cached = await cache.get(cache_key)
-    assert cached is not None
-    assert "Therapy" not in cached
+    assert await cache.get(cache_key) is None
     fetched = await patient_service.get_patient_with_med_service(created.id)
     assert fetched.med_service == []

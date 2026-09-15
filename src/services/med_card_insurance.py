@@ -5,10 +5,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from src.models import CacheInvalidationJob
 from src.exceptions.exceptions import NotFoundException
 from src.models.insurance import Insurance as InsuranceModel
 from src.models.med_card import MedCard as MedCardModel
-from src.cache import Cache
+from infrastructure.cache import RedisCache
 from src.schemas.med_card import (
     MedCardInsuranceCreate,
     MedCardInsuranceResponse,
@@ -19,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class MedCardInsuranceService:
-    def __init__(self, session: AsyncSession, cache: Cache):
+    def __init__(self, session: AsyncSession, cache: RedisCache):
         self.session = session
         self.cache = cache
 
@@ -95,4 +96,5 @@ class MedCardInsuranceService:
         if med_card.insurance is not None:
             med_card.insurance.is_deleted = True
         await self.session.flush()
+        self.session.add(CacheInvalidationJob(cache_key=self._cache_key(med_card_id)))
         await self.cache.delete(self._cache_key(med_card_id))
