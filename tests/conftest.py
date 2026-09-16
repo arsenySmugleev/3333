@@ -72,7 +72,7 @@ def postgres_url(postgres_container: PostgresContainer) -> str:
 def redis_url(redis_container: RedisContainer) -> str:
     host = redis_container.get_container_host_ip()
     port = redis_container.get_exposed_port(6379)
-    return f"redis://{host}:{port}/0"
+    return f"redis://{host}:{port}"
 
 
 @pytest.fixture
@@ -126,29 +126,21 @@ def med_card_service(session: AsyncSession, cache: RedisCache) -> MedCardInsuran
 
 @pytest.fixture
 async def client(
-    engine: AsyncEngine,
+    session: AsyncSession,
     cache: RedisCache,
 ) -> AsyncGenerator[AsyncClient, None]:
-    session_factory = async_sessionmaker(
-        bind=engine,
-        class_=AsyncSession,
-        expire_on_commit=False,
-    )
+    async def override_get_session() -> AsyncGenerator[AsyncSession, None]:
+        yield session
 
-    async with session_factory() as session:
-        async def override_get_session() -> AsyncGenerator[AsyncSession, None]:
-            yield session
+    async def override_get_cache() -> RedisCache:
+        return cache
 
-        async def override_get_cache() -> RedisCache:
-            return cache
+    app = get_app()
+    app.dependency_overrides[get_session] = override_get_session
+    app.dependency_overrides[get_cache] = override_get_cache
 
-        app = get_app()
-        app.dependency_overrides[get_session] = override_get_session
-        app.dependency_overrides[get_cache] = override_get_cache
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as http_client:
+        yield http_client
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as http_client:
-            yield http_client
-
-        app.dependency_overrides.clear()
-        await session.rollback()
+    app.dependency_overrides.clear()
