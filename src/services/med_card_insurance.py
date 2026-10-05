@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.models import CacheInvalidationJob
+from src.repositories import CacheInvalidationRepository
 from src.exceptions.exceptions import NotFoundException
 from src.models.insurance import Insurance as InsuranceModel
 from src.models.med_card import MedCard as MedCardModel
@@ -23,17 +23,15 @@ class MedCardInsuranceService:
     def __init__(self, session: AsyncSession, cache: RedisCache):
         self.session = session
         self.cache = cache
+        self.invalidation_repo = CacheInvalidationRepository(session)
 
     @staticmethod
     def _cache_key(med_card_id: UUID) -> str:
         return f"med_card:{med_card_id}"
 
-    async def _refresh_cache(
-        self,
-        med_card_id: UUID,
-        response: MedCardInsuranceResponse,
-    ) -> None:
-        await self.cache.set(self._cache_key(med_card_id), response.model_dump_json())
+    def _schedule_cache_invalidation(self, *cache_keys: str) -> None:
+        for cache_key in cache_keys:
+            self.invalidation_repo.add(cache_key)
 
     async def _get_med_card_model(self, med_card_id: UUID) -> MedCardModel:
         result = await self.session.execute(
@@ -87,7 +85,7 @@ class MedCardInsuranceService:
         await self.session.flush()
         med_card = await self._get_med_card_model(med_card_id)
         response = MedCardInsuranceResponse.from_model(med_card)
-        await self._refresh_cache(med_card_id, response)
+        self._schedule_cache_invalidation(self._cache_key(med_card_id))
         return response
 
     async def delete_med_card_with_insurance(self, med_card_id: UUID) -> None:
@@ -96,5 +94,4 @@ class MedCardInsuranceService:
         if med_card.insurance is not None:
             med_card.insurance.is_deleted = True
         await self.session.flush()
-        self.session.add(CacheInvalidationJob(cache_key=self._cache_key(med_card_id)))
-        await self.cache.delete(self._cache_key(med_card_id))
+        self._schedule_cache_invalidation(self._cache_key(med_card_id))

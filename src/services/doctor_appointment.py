@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.models import CacheInvalidationJob
+from src.repositories import CacheInvalidationRepository
 from src.exceptions.exceptions import NotFoundException
 from src.models.appointment import Appointment as AppointmentModel
 from src.models.doctor import Doctor as DoctorModel
@@ -24,17 +24,15 @@ class DoctorAppointmentService:
     def __init__(self, session: AsyncSession, cache: RedisCache):
         self.session = session
         self.cache = cache
+        self.invalidation_repo = CacheInvalidationRepository(session)
 
     @staticmethod
     def _cache_key(doctor_id: UUID) -> str:
         return f"doctor:{doctor_id}"
 
-    async def _refresh_cache(
-        self,
-        doctor_id: UUID,
-        response: DoctorWithAppointmentResponse,
-    ) -> None:
-        await self.cache.set(self._cache_key(doctor_id), response.model_dump_json())
+    def _schedule_cache_invalidation(self, *cache_keys: str) -> None:
+        for cache_key in cache_keys:
+            self.invalidation_repo.add(cache_key)
 
     async def _get_doctor_model(self, doctor_id: UUID) -> DoctorModel:
         result = await self.session.execute(
@@ -91,7 +89,7 @@ class DoctorAppointmentService:
         await self.session.flush()
         doctor = await self._get_doctor_model(doctor_id)
         response = DoctorWithAppointmentResponse.from_model(doctor)
-        await self._refresh_cache(doctor_id, response)
+        self._schedule_cache_invalidation(self._cache_key(doctor_id))
         return response
 
     async def delete_doctor_with_appointment(self, doctor_id: UUID) -> None:
@@ -100,5 +98,4 @@ class DoctorAppointmentService:
         for appointment in doctor.appointment:
             appointment.is_deleted = True
         await self.session.flush()
-        self.session.add(CacheInvalidationJob(cache_key=self._cache_key(doctor_id)))
-        await self.cache.delete(self._cache_key(doctor_id))
+        self._schedule_cache_invalidation(self._cache_key(doctor_id))

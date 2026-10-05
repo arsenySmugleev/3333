@@ -2,8 +2,10 @@ from datetime import datetime, timezone
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import select
 
 from src.exceptions.exceptions import NotFoundException
+from src.models import CacheInvalidationJob
 from src.schemas.doctor import DoctorWithAppointmentCreate, DoctorWithAppointmentUpdate
 from src.schemas.appointment import AppointmentNestedCreate, AppointmentUpsert
 from src.services.doctor_appointment import DoctorAppointmentService
@@ -20,6 +22,15 @@ def _create_payload(name: str = "House") -> DoctorWithAppointmentCreate:
             )
         ],
     )
+
+
+async def _pending_cache_keys(session) -> set[str]:
+    result = await session.execute(
+        select(CacheInvalidationJob.cache_key).where(
+            CacheInvalidationJob.status == "pending",
+        )
+    )
+    return set(result.scalars().all())
 
 
 @pytest.mark.asyncio
@@ -60,7 +71,10 @@ async def test_get_doctor_uses_cache(doctor_service: DoctorAppointmentService, c
 
 
 @pytest.mark.asyncio
-async def test_update_refreshes_cache(doctor_service: DoctorAppointmentService, cache):
+async def test_update_schedules_cache_invalidation(
+    doctor_service: DoctorAppointmentService,
+    cache,
+):
     created = await doctor_service.create_doctor_with_appointment(_create_payload())
     await doctor_service.get_doctor_with_appointment(created.id)
     cache_key = doctor_service._cache_key(created.id)
@@ -71,13 +85,17 @@ async def test_update_refreshes_cache(doctor_service: DoctorAppointmentService, 
         DoctorWithAppointmentUpdate(name="Wilson"),
     )
     assert updated.name == "Wilson"
-    cached = await cache.get(cache_key)
-    assert cached is not None
-    assert "Wilson" in cached
+    assert cache_key in await _pending_cache_keys(doctor_service.session)
+    assert await cache.get(cache_key) is not None
+
+    await cache.delete(cache_key)
+    fetched = await doctor_service.get_doctor_with_appointment(created.id)
+    assert fetched.name == "Wilson"
+    assert "Wilson" in (await cache.get(cache_key))
 
 
 @pytest.mark.asyncio
-async def test_delete_soft_deletes_and_invalidates_cache(
+async def test_delete_soft_deletes_and_schedules_cache_invalidation(
     doctor_service: DoctorAppointmentService,
     cache,
 ):
@@ -87,7 +105,8 @@ async def test_delete_soft_deletes_and_invalidates_cache(
 
     await doctor_service.delete_doctor_with_appointment(created.id)
 
-    assert await cache.get(cache_key) is None
+    assert cache_key in await _pending_cache_keys(doctor_service.session)
+    await cache.delete(cache_key)
     with pytest.raises(NotFoundException):
         await doctor_service.get_doctor_with_appointment(created.id)
 

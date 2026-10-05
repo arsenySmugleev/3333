@@ -1,8 +1,10 @@
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import select
 
 from src.exceptions.exceptions import NotFoundException
+from src.models import CacheInvalidationJob
 from src.schemas.insurance import InsuranceCreate, InsuranceUpdate
 from src.schemas.med_card import (
     MedCardCreate,
@@ -22,6 +24,15 @@ def _create_payload(
         med_card=MedCardCreate(patient_name=patient_name, snils=snils),
         insurance=InsuranceCreate(policy_number=policy_number),
     )
+
+
+async def _pending_cache_keys(session) -> set[str]:
+    result = await session.execute(
+        select(CacheInvalidationJob.cache_key).where(
+            CacheInvalidationJob.status == "pending",
+        )
+    )
+    return set(result.scalars().all())
 
 
 @pytest.mark.asyncio
@@ -61,7 +72,10 @@ async def test_get_med_card_uses_cache(med_card_service: MedCardInsuranceService
 
 
 @pytest.mark.asyncio
-async def test_update_refreshes_cache(med_card_service: MedCardInsuranceService, cache):
+async def test_update_schedules_cache_invalidation(
+    med_card_service: MedCardInsuranceService,
+    cache,
+):
     created = await med_card_service.create_med_card_with_insurance(_create_payload())
     await med_card_service.get_med_card_with_insurance(created.id)
     cache_key = med_card_service._cache_key(created.id)
@@ -76,14 +90,19 @@ async def test_update_refreshes_cache(med_card_service: MedCardInsuranceService,
     )
     assert updated.patient_name == "Petr"
     assert updated.insurance.policy_number == 9999
+    assert cache_key in await _pending_cache_keys(med_card_service.session)
+    assert await cache.get(cache_key) is not None
+
+    await cache.delete(cache_key)
+    fetched = await med_card_service.get_med_card_with_insurance(created.id)
+    assert fetched.patient_name == "Petr"
     cached = await cache.get(cache_key)
-    assert cached is not None
     assert "Petr" in cached
     assert "9999" in cached
 
 
 @pytest.mark.asyncio
-async def test_delete_soft_deletes_and_invalidates_cache(
+async def test_delete_soft_deletes_and_schedules_cache_invalidation(
     med_card_service: MedCardInsuranceService,
     cache,
 ):
@@ -93,6 +112,7 @@ async def test_delete_soft_deletes_and_invalidates_cache(
 
     await med_card_service.delete_med_card_with_insurance(created.id)
 
-    assert await cache.get(cache_key) is None
+    assert cache_key in await _pending_cache_keys(med_card_service.session)
+    await cache.delete(cache_key)
     with pytest.raises(NotFoundException):
         await med_card_service.get_med_card_with_insurance(created.id)

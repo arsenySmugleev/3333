@@ -1,8 +1,10 @@
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import select
 
 from src.exceptions.exceptions import NotFoundException
+from src.models import CacheInvalidationJob
 from src.schemas.med_service import MedServiceCreate
 from src.schemas.patient import (
     PatientWithMedServiceCreate,
@@ -19,6 +21,15 @@ def _create_payload(
         name=name,
         med_service=[MedServiceCreate(service_name=service_name)],
     )
+
+
+async def _pending_cache_keys(session) -> set[str]:
+    result = await session.execute(
+        select(CacheInvalidationJob.cache_key).where(
+            CacheInvalidationJob.status == "pending",
+        )
+    )
+    return set(result.scalars().all())
 
 
 @pytest.mark.asyncio
@@ -58,7 +69,10 @@ async def test_get_patient_uses_cache(patient_service: PatientMedServiceService,
 
 
 @pytest.mark.asyncio
-async def test_update_refreshes_cache(patient_service: PatientMedServiceService, cache):
+async def test_update_schedules_cache_invalidation(
+    patient_service: PatientMedServiceService,
+    cache,
+):
     created = await patient_service.create_patient_with_med_service(_create_payload())
     await patient_service.get_patient_with_med_service(created.id)
     cache_key = patient_service._cache_key(created.id)
@@ -69,13 +83,17 @@ async def test_update_refreshes_cache(patient_service: PatientMedServiceService,
         PatientWithMedServiceUpdate(name="Petr"),
     )
     assert updated.name == "Petr"
-    cached = await cache.get(cache_key)
-    assert cached is not None
-    assert "Petr" in cached
+    assert cache_key in await _pending_cache_keys(patient_service.session)
+    assert await cache.get(cache_key) is not None
+
+    await cache.delete(cache_key)
+    fetched = await patient_service.get_patient_with_med_service(created.id)
+    assert fetched.name == "Petr"
+    assert "Petr" in (await cache.get(cache_key))
 
 
 @pytest.mark.asyncio
-async def test_delete_patient_soft_deletes_and_invalidates_cache(
+async def test_delete_patient_soft_deletes_and_schedules_cache_invalidation(
     patient_service: PatientMedServiceService,
     cache,
 ):
@@ -88,7 +106,8 @@ async def test_delete_patient_soft_deletes_and_invalidates_cache(
         delete_type="patient",
     )
 
-    assert await cache.get(cache_key) is None
+    assert cache_key in await _pending_cache_keys(patient_service.session)
+    await cache.delete(cache_key)
     with pytest.raises(NotFoundException):
         await patient_service.get_patient_with_med_service(created.id)
 
@@ -114,7 +133,7 @@ async def test_update_replaces_med_services(patient_service: PatientMedServiceSe
 
 
 @pytest.mark.asyncio
-async def test_delete_med_service_invalidates_patient_cache(
+async def test_delete_med_service_schedules_patient_cache_invalidation(
     patient_service: PatientMedServiceService,
     cache,
 ):
@@ -129,6 +148,7 @@ async def test_delete_med_service_invalidates_patient_cache(
         delete_type="med_service",
     )
 
-    assert await cache.get(cache_key) is None
+    assert cache_key in await _pending_cache_keys(patient_service.session)
+    await cache.delete(cache_key)
     fetched = await patient_service.get_patient_with_med_service(created.id)
     assert fetched.med_service == []

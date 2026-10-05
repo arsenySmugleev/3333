@@ -1,10 +1,8 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.db import get_session
-from infrastructure.cache import RedisCache, get_cache
+from src.dependencies import get_doctor_appointment_service
 from src.schemas.doctor import (
     DoctorWithAppointmentCreate,
     DoctorWithAppointmentResponse,
@@ -18,20 +16,16 @@ router = APIRouter(prefix="/doctor_appointment", tags=["doctor_with_appointment"
 @router.get("/{doctor_id}", response_model=DoctorWithAppointmentResponse)
 async def get_doctor_with_appointments(
     doctor_id: UUID,
-    session: AsyncSession = Depends(get_session),
-    cache: RedisCache = Depends(get_cache),
+    service: DoctorAppointmentService = Depends(get_doctor_appointment_service),
 ):
-    service = DoctorAppointmentService(session, cache)
     return await service.get_doctor_with_appointment(doctor_id)
 
 
 @router.post("/", response_model=DoctorWithAppointmentResponse, status_code=status.HTTP_201_CREATED)
 async def create_doctor_with_appointments(
     doctor_data: DoctorWithAppointmentCreate,
-    session: AsyncSession = Depends(get_session),
-    cache: RedisCache = Depends(get_cache),
+    service: DoctorAppointmentService = Depends(get_doctor_appointment_service),
 ):
-    service = DoctorAppointmentService(session, cache)
     return await service.create_doctor_with_appointment(doctor_data=doctor_data)
 
 
@@ -39,18 +33,14 @@ async def create_doctor_with_appointments(
 async def update_doctor_with_appointments(
     doctor_id: UUID,
     update_data: DoctorWithAppointmentUpdate,
-    session: AsyncSession = Depends(get_session),
-    cache: RedisCache = Depends(get_cache),
+    service: DoctorAppointmentService = Depends(get_doctor_appointment_service),
 ):
-    service = DoctorAppointmentService(session, cache)
     return await service.update_doctor_with_appointment(doctor_id, update_data)
 
 
 @router.delete("/{doctor_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_doctor_with_appointments(
     doctor_id: UUID,
-    session: AsyncSession = Depends(get_session),
-    cache: RedisCache = Depends(get_cache),
+    service: DoctorAppointmentService = Depends(get_doctor_appointment_service),
 ):
-    service = DoctorAppointmentService(session, cache)
     await service.delete_doctor_with_appointment(doctor_id)

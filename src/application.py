@@ -7,12 +7,10 @@ from redis.asyncio import Redis
 from starlette.middleware.cors import CORSMiddleware
 
 from infrastructure.cache import RedisCache
-from infrastructure.cache.invalidation import run_invalidation_worker
 from src.config import Settings
 from src.controllers.v1.doctors import router as doctor_appointment
 from src.controllers.v1.medical_cards import router as med_card_insurance
 from src.controllers.v1.patients import router as patient_med_service
-from src.db import SessionFactory
 from src.exceptions.handlers.exception_handler import register_exception_handlers
 from src.healthcheck.router import router as healthcheck_router
 from src.logging_config import configure_logging
@@ -28,16 +26,8 @@ async def lifespan(app: FastAPI):
     app.state.redis = redis
     app.state.cache = cache
 
-    worker_task = asyncio.create_task(run_invalidation_worker(SessionFactory, cache))
-    app.state.invalidation_worker = worker_task
-
     yield
 
-    worker_task.cancel()
-    try:
-        await worker_task
-    except asyncio.CancelledError:
-        pass
     await redis.aclose()
 
 

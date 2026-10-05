@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.models import CacheInvalidationJob
+from src.repositories import CacheInvalidationRepository
 from src.exceptions.exceptions import NotFoundException
 from src.models.med_service import MedService as MedServiceModel
 from src.models.patient import Patient as PatientModel
@@ -24,17 +24,15 @@ class PatientMedServiceService:
     def __init__(self, session: AsyncSession, cache: RedisCache):
         self.session = session
         self.cache = cache
+        self.invalidation_repo = CacheInvalidationRepository(session)
 
     @staticmethod
     def _cache_key(patient_id: UUID) -> str:
         return f"patient:{patient_id}"
 
-    async def _refresh_cache(
-        self,
-        patient_id: UUID,
-        response: PatientWithMedServiceResponse,
-    ) -> None:
-        await self.cache.set(self._cache_key(patient_id), response.model_dump_json())
+    def _schedule_cache_invalidation(self, *cache_keys: str) -> None:
+        for cache_key in cache_keys:
+            self.invalidation_repo.add(cache_key)
 
     async def _get_patient_model(self, patient_id: UUID) -> PatientModel:
         result = await self.session.execute(
@@ -107,7 +105,7 @@ class PatientMedServiceService:
         await self.session.flush()
         patient = await self._get_patient_model(patient_id)
         response = PatientWithMedServiceResponse.from_model(patient)
-        await self._refresh_cache(patient_id, response)
+        self._schedule_cache_invalidation(self._cache_key(patient_id))
         return response
 
     async def delete_patient_or_med_service(
@@ -120,8 +118,7 @@ class PatientMedServiceService:
             patient = await self._get_patient_model(patient_id)
             patient.is_deleted = True
             await self.session.flush()
-            self.session.add(CacheInvalidationJob(cache_key=self._cache_key(patient_id)))
-            await self.cache.delete(self._cache_key(patient_id))
+            self._schedule_cache_invalidation(self._cache_key(patient_id))
 
         elif delete_type.lower() == "med_service" and med_service_id:
             result = await self.session.execute(
@@ -139,9 +136,9 @@ class PatientMedServiceService:
                 raise NotFoundException(message)
             med_service.is_deleted = True
             await self.session.flush()
-            for patient in med_service.patient:
-                if patient.is_deleted:
-                    continue
-                key = self._cache_key(patient.id)
-                self.session.add(CacheInvalidationJob(cache_key=key))
-                await self.cache.delete(key)
+            keys = [
+                self._cache_key(patient.id)
+                for patient in med_service.patient
+                if not patient.is_deleted
+            ]
+            self._schedule_cache_invalidation(*keys)
