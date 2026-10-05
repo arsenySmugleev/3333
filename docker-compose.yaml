@@ -34,7 +34,7 @@ services:
       - "8000:8000"
     environment:
       postgres_url: postgresql+asyncpg://postgres:123456@postgres:5432/postgres
-      redis_url: redis://redis:6379/0
+      redis_url: redis://redis:6379
       cache_ttl_seconds: "3600"
     depends_on:
       postgres:
@@ -49,7 +49,7 @@ services:
     command: ["python", "-m", "infrastructure.workers.cache_invalidation"]
     environment:
       postgres_url: postgresql+asyncpg://postgres:123456@postgres:5432/postgres
-      redis_url: redis://redis:6379/0
+      redis_url: redis://redis:6379
       cache_ttl_seconds: "3600"
     depends_on:
       postgres:
