@@ -1,4 +1,5 @@
 from datetime import datetime
+from enum import StrEnum
 from uuid import UUID, uuid4
 
 import sqlalchemy as sa
@@ -9,6 +10,13 @@ from sqlalchemy.sql import func
 from src.models.base import Base
 
 
+class CacheInvalidationStatus(StrEnum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    DONE = "done"
+    FAILED = "failed"
+
+
 class CacheInvalidationJob(Base):
     __tablename__ = "cache_invalidation_jobs"
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
@@ -16,8 +24,8 @@ class CacheInvalidationJob(Base):
     status: Mapped[str] = mapped_column(
         sa.String(),
         nullable=False,
-        default="pending",
-        server_default="pending",
+        default=CacheInvalidationStatus.PENDING,
+        server_default=CacheInvalidationStatus.PENDING.value,
     )
     attempts: Mapped[int] = mapped_column(
         sa.Integer(),
@@ -29,4 +37,8 @@ class CacheInvalidationJob(Base):
         sa.DateTime(timezone=True),
         nullable=False,
         server_default=func.now(),
+    )
+    locked_until: Mapped[datetime | None] = mapped_column(
+        sa.DateTime(timezone=True),
+        nullable=True,
     )

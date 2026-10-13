@@ -30,6 +30,7 @@ def upgrade() -> None:
             server_default=sa.func.now(),
             nullable=False,
         ),
+        sa.Column("locked_until", sa.DateTime(timezone=True), nullable=True),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -49,8 +50,14 @@ def upgrade() -> None:
         "cache_invalidation_jobs",
         ["status", "available_at"],
     )
+    op.create_index(
+        "ix_cache_invalidation_jobs_locked",
+        "cache_invalidation_jobs",
+        ["status", "locked_until"],
+    )
 
 
 def downgrade() -> None:
+    op.drop_index("ix_cache_invalidation_jobs_locked", table_name="cache_invalidation_jobs")
     op.drop_index("ix_cache_invalidation_jobs_pending", table_name="cache_invalidation_jobs")
     op.drop_table("cache_invalidation_jobs")

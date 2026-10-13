@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy import select
 
 from src.exceptions.exceptions import NotFoundException
-from src.models import CacheInvalidationJob
+from src.models import CacheInvalidationJob, CacheInvalidationStatus
 from src.schemas.med_service import MedServiceCreate
 from src.schemas.patient import (
     PatientWithMedServiceCreate,
@@ -26,7 +26,7 @@ def _create_payload(
 async def _pending_cache_keys(session) -> set[str]:
     result = await session.execute(
         select(CacheInvalidationJob.cache_key).where(
-            CacheInvalidationJob.status == "pending",
+            CacheInvalidationJob.status == CacheInvalidationStatus.PENDING,
         )
     )
     return set(result.scalars().all())

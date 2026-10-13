@@ -46,11 +46,16 @@ services:
 
   worker:
     build: .
-    command: ["python", "-m", "infrastructure.workers.cache_invalidation"]
+    command: ["python", "-m", "src.workers.cache_invalidation"]
     environment:
       postgres_url: postgresql+asyncpg://postgres:123456@postgres:5432/postgres
       redis_url: redis://redis:6379
       cache_ttl_seconds: "3600"
+      cache_invalidation_poll_interval_seconds: "2"
+      cache_invalidation_retry_delay_seconds: "30"
+      cache_invalidation_batch_size: "20"
+      cache_invalidation_lock_timeout_seconds: "60"
+      cache_invalidation_max_attempts: "5"
     depends_on:
       postgres:
         condition: service_healthy
