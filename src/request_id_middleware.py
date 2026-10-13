@@ -26,20 +26,15 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
         except Exception:
             duration_ms = (perf_counter() - start) * 1000
             logger.exception(
-                "request failed method=%s path=%s duration_ms=%.2f",
-                request.method,
-                request.url.path,
-                duration_ms,
+                f"request failed method={request.method} path={request.url.path} "
+                f"duration_ms={duration_ms:.2f}"
             )
             raise
         else:
             duration_ms = (perf_counter() - start) * 1000
             logger.info(
-                "request completed method=%s path=%s status_code=%s duration_ms=%.2f",
-                request.method,
-                request.url.path,
-                response.status_code,
-                duration_ms,
+                f"request completed method={request.method} path={request.url.path} "
+                f"status_code={response.status_code} duration_ms={duration_ms:.2f}"
             )
             response.headers[REQUEST_ID_HEADER] = request_id
             return response

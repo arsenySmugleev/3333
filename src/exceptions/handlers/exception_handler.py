@@ -30,13 +30,13 @@ def register_exception_handlers(app: FastAPI):
         error_code = exc.__class__.__name__
         reason = str(exc.detail)
         log_message = (
-            "exception status_code=%s error_code=%s reason=%s method=%s path=%s"
+            f"exception status_code={status_code} error_code={error_code} "
+            f"reason={reason} method={request.method} path={request.url.path}"
         )
-        log_args = (status_code, error_code, reason, request.method, request.url.path)
         if status_code >= status.HTTP_500_INTERNAL_SERVER_ERROR:
-            logger.error(log_message, *log_args)
+            logger.error(log_message)
         else:
-            logger.warning(log_message, *log_args)
+            logger.warning(log_message)
         return JSONResponse(
             status_code=status_code,
             content=ErrorResponse(

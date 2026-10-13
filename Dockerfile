@@ -32,6 +32,7 @@ RUN groupadd --gid ${APP_GID} appuser \
 COPY --from=builder /app/.venv /app/.venv
 COPY pyproject.toml poetry.lock ./
 COPY src/ ./src/
+COPY infrastructure/ ./infrastructure/
 
 RUN chown -R appuser:appuser /app
 
