@@ -1,13 +1,15 @@
 import logging
 from uuid import UUID
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from src.repositories import CacheInvalidationRepository
 from src.exceptions.exceptions import NotFoundException
 from src.models.insurance import Insurance as InsuranceModel
 from src.models.med_card import MedCard as MedCardModel
+from infrastructure.cache import RedisCache
 from src.schemas.med_card import (
     MedCardInsuranceCreate,
     MedCardInsuranceResponse,
@@ -18,8 +20,18 @@ logger = logging.getLogger(__name__)
 
 
 class MedCardInsuranceService:
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession, cache: RedisCache):
         self.session = session
+        self.cache = cache
+        self.invalidation_repo = CacheInvalidationRepository(session)
+
+    @staticmethod
+    def _cache_key(med_card_id: UUID) -> str:
+        return f"med_card:{med_card_id}"
+
+    def _schedule_cache_invalidation(self, *cache_keys: str) -> None:
+        for cache_key in cache_keys:
+            self.invalidation_repo.add(cache_key)
 
     async def _get_med_card_model(self, med_card_id: UUID) -> MedCardModel:
         result = await self.session.execute(
@@ -28,7 +40,13 @@ class MedCardInsuranceService:
                 MedCardModel.id == med_card_id,
                 MedCardModel.is_deleted.is_(False),
             )
-            .options(selectinload(MedCardModel.insurance.and_(InsuranceModel.is_deleted.is_(False)))))
+            .options(
+                selectinload(
+                    MedCardModel.insurance.and_(InsuranceModel.is_deleted.is_(False))
+                )
+            )
+            .execution_options(populate_existing=True)
+        )
         med_card = result.scalar_one_or_none()
         if not med_card:
             message = f"MedCard {med_card_id} not found"
@@ -37,8 +55,15 @@ class MedCardInsuranceService:
         return med_card
 
     async def get_med_card_with_insurance(self, med_card_id: UUID) -> MedCardInsuranceResponse:
+        cache_key = self._cache_key(med_card_id)
+        cached = await self.cache.get(cache_key)
+        if cached:
+            return MedCardInsuranceResponse.model_validate_json(cached)
+
         med_card = await self._get_med_card_model(med_card_id)
-        return MedCardInsuranceResponse.from_model(med_card)
+        response = MedCardInsuranceResponse.from_model(med_card)
+        await self.cache.set(cache_key, response.model_dump_json())
+        return response
 
     async def create_med_card_with_insurance(
         self,
@@ -59,7 +84,9 @@ class MedCardInsuranceService:
         update_data.apply_to(med_card)
         await self.session.flush()
         med_card = await self._get_med_card_model(med_card_id)
-        return MedCardInsuranceResponse.from_model(med_card)
+        response = MedCardInsuranceResponse.from_model(med_card)
+        self._schedule_cache_invalidation(self._cache_key(med_card_id))
+        return response
 
     async def delete_med_card_with_insurance(self, med_card_id: UUID) -> None:
         med_card = await self._get_med_card_model(med_card_id)
@@ -67,3 +94,4 @@ class MedCardInsuranceService:
         if med_card.insurance is not None:
             med_card.insurance.is_deleted = True
         await self.session.flush()
+        self._schedule_cache_invalidation(self._cache_key(med_card_id))
